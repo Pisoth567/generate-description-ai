@@ -1,12 +1,13 @@
 # Environment
 .env
-.env.local
-.env.production
+.env.*
+!.env.example
 
 # Python
 __pycache__/
 *.pyc
 .venv/
+backend/.venv/
 venv/
 
 # Node / Next.js
