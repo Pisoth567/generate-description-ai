@@ -122,8 +122,15 @@ def update_user(db: Session, user_id: int, update_data: UserUpdate) -> User:
             if existing is not None and existing.id != user.id:
                 raise DuplicateEmail()
             user.email = email
-        if "is_active" in changes:
-            user.is_active = changes["is_active"]
+        db.commit()
+        db.refresh(user)
+        return user
+
+
+def deactivate_user(db: Session, user_id: int) -> User:
+    with database_operation(db):
+        user = locked_user(db, user_id)
+        user.is_active = False
         db.commit()
         db.refresh(user)
         return user

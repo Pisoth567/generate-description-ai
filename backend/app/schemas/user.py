@@ -13,9 +13,8 @@ class UserUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     email: EmailStr | None = None
-    is_active: bool | None = None
 
-    @field_validator("email", "is_active")
+    @field_validator("email")
     @classmethod
     def reject_explicit_null(cls, value):
         if value is None:
