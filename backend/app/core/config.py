@@ -16,7 +16,11 @@ class Settings(BaseSettings):
     APP_NAME: str = "Generate Description AI API"
     APP_ENV: str = "development"
     FRONTEND_URL: str = "http://localhost:3000"
-    OPENAI_API_KEY: SecretStr | None = None
+    openai_api_key: SecretStr | None = Field(default=None, repr=False)
+    openai_model: str = ""
+    openai_max_output_tokens: int = Field(default=300, gt=0, le=4096)
+    openai_timeout_seconds: float = Field(default=30, gt=0, le=120)
+    generation_credit_cost: int = Field(default=1, gt=0, le=2_147_483_647)
     database_url: str = Field(repr=False)
     jwt_secret_key: SecretStr = Field(repr=False)
     jwt_algorithm: Literal["HS256"] = "HS256"

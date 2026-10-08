@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -5,11 +7,19 @@ from fastapi.responses import JSONResponse
 
 from app.api.auth import router as auth_router
 from app.api.generate import router as generate_router
+from app.api.generations import router as generations_router
+from app.services.ai_service import close_client
 from app.api.health import router as health_router
 from app.api.users import router as users_router
 from app.core.config import settings
 
-app = FastAPI(title=settings.APP_NAME, version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    await close_client()
+
+
+app = FastAPI(title=settings.APP_NAME, version="1.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.FRONTEND_URL],
@@ -18,6 +28,7 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
 )
 app.include_router(generate_router, prefix="/api")
+app.include_router(generations_router)
 app.include_router(health_router)
 app.include_router(users_router)
 app.include_router(auth_router)

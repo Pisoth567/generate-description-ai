@@ -211,9 +211,7 @@ class AuthAPITests(unittest.TestCase):
             self.assertEqual(request('GET', path)[0], 200)
         code, body, _ = request('POST', '/api/generate', {
             'product_name': 'Test', 'category': 'demo', 'features': ['speed', 'quality']})
-        self.assertEqual(code, 200)
-        self.assertEqual(body, {'description': 'Test is a high-quality demo product featuring speed and quality.',
-                                'tone': 'professional', 'language': 'English'})
+        self.assertEqual(code, 401)
         code, schema, _ = request('GET', '/openapi.json')
         self.assertEqual(code, 200)
         self.assertNotIn('/api/users', schema['paths'])
