@@ -29,7 +29,7 @@ def finalize_generation(
             generation = Generation(
                 user_id=user_id, product_name=request.product_name,
                 category=request.category, generated_text=result.description,
-                tone=request.tone, language=request.language, tokens_used=result.tokens_used,
+                tone=request.tone, language=request.language.value, tokens_used=result.tokens_used,
             )
             db.add(generation)
             db.flush()

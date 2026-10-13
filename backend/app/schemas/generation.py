@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
@@ -10,6 +11,11 @@ Feature = Annotated[NonEmptyString, StringConstraints(max_length=300)]
 Style = Annotated[NonEmptyString, StringConstraints(max_length=50)]
 
 
+class GenerationLanguage(str, Enum):
+    ENGLISH = "English"
+    KHMER = "Khmer"
+
+
 class GenerationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -17,7 +23,7 @@ class GenerationRequest(BaseModel):
     category: Category | None = None
     features: list[Feature] = Field(max_length=20)
     tone: Style = "professional"
-    language: Style = "English"
+    language: GenerationLanguage = GenerationLanguage.ENGLISH
 
 
 class GenerationResponse(BaseModel):
