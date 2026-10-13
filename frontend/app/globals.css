@@ -1,26 +1,27 @@
-@import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+:root { color-scheme: light; --ink: #152b34; --muted: #50666e; --accent: #116b5d; --line: #d8e3df; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #f5f8f6; color: var(--ink); font-family: Arial, "Noto Sans Khmer", "Khmer OS", sans-serif; line-height: 1.65; }
+a { color: var(--accent); text-underline-offset: 4px; }
+a:hover { text-decoration: underline; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; padding: 1.2rem max(5%, calc((100% - 1160px)/2)); background: white; border-bottom: 1px solid var(--line); }
+.brand { font-size: 1.05rem; font-weight: 800; color: var(--ink); text-decoration: none; }
+nav { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; font-size: .9rem; }
+nav [aria-current="page"] { font-weight: bold; text-decoration: underline; }
+.container { width: min(1120px, 90%); margin: 2rem auto 5rem; }
+h1 { font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.2; font-weight: 750; margin: 1rem 0; letter-spacing: -.04em; }
+h2 { font-size: 1.25rem; font-weight: 700; margin: 0 0 .75rem; }
+p { margin: .75rem 0; }
+.hero { padding-top: 4rem; }.hero h1 { max-width: 780px; font-size: clamp(2.6rem, 6vw, 4.6rem); }.lead { max-width: 660px; font-size: 1.25rem; color: var(--muted); }.eyebrow { color: var(--accent); font-size: .8rem; font-weight: 800; letter-spacing: .16em; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(260px,100%),1fr)); gap: 1.2rem; margin: 2rem 0; }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 2rem 0; align-items: start; }
+.card { background: white; border: 1px solid var(--line); padding: 1.7rem; border-radius: 14px; min-width: 0; overflow-wrap: anywhere; }
+.auth { width: min(440px,90%); margin: 4rem auto; }.auth h1 { font-size: 2rem; }
+form { display: flex; flex-direction: column; gap: 1rem; }label { display: flex; flex-direction: column; gap: .4rem; font-weight: 600; }
+input,textarea,select { width: 100%; font: inherit; color: var(--ink); background: white; border: 1px solid #97ada5; padding: .65rem .8rem; border-radius: 7px; }textarea { resize: vertical; }
+button,.button { display: inline-flex; justify-content: center; align-items: center; padding: .65rem 1.1rem; background: var(--accent); border: 1px solid var(--accent); color: white; border-radius: 7px; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; }
+button:hover,.button:hover { filter: brightness(.93); text-decoration: none; }.secondary { background: white; color: var(--accent); border-color: #9cbdb4; }button:disabled { cursor: wait; opacity: .55; }
+:focus-visible { outline: 3px solid #cb810e; outline-offset: 4px; }
+.actions,.row,.account-line { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; }.actions { margin: 1.5rem 0; }.row,.account-line { justify-content: space-between; }.account-line { color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 1rem; overflow-wrap: anywhere; }
+.muted,small { color: var(--muted); }.error { color: #902929; background: #fff0ed; border: 1px solid #e9b2aa; padding: .8rem; border-radius: 7px; }.balance { font-size: 2.6rem; font-weight: 700; }.balance small { font-size: 1rem; }.capitalize { text-transform: capitalize; }
+.description { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.9; padding: 1rem 0; }.preview { overflow-wrap: anywhere; }.history-item { margin: 1rem 0; }.badge { border-radius: 20px; padding: .2rem .8rem; background: #edf0ef; }.paid { background: #dcf2e7; color: #165b3a; }.pending { background: #fff1cc; color: #714e00; }.failed,.cancelled { background: #fce6e4; color: #862f25; }
+@media(max-width:760px) { .split { grid-template-columns: 1fr; }header { padding: 1rem 5%; }nav { gap: .8rem; }.hero { padding-top: 1rem; }.card { padding: 1.2rem; }.auth { margin-top: 2rem; } }

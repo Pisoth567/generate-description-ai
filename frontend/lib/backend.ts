@@ -1,0 +1,19 @@
+import "server-only";
+import { errorMessage } from "./errors";
+export class BackendError extends Error { constructor(public status: number, path = "") { super(errorMessage(status, path)); } }
+export async function backend<T>(path: string, token?: string, body?: unknown): Promise<T> {
+  try {
+    const base = process.env.BACKEND_URL;
+    if (!base) throw new BackendError(502, path);
+    const response = await fetch(`${base.replace(/\/$/, "")}${path}`, {
+      method: body === undefined ? "GET" : "POST", cache: "no-store", redirect: "error",
+      headers: { Accept: "application/json", ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(90000),
+    });
+    if (!response.ok) throw new BackendError(response.status, path);
+    return await response.json() as T;
+  } catch (error) {
+    if (error instanceof BackendError) throw error;
+    throw new BackendError(502, path);
+  }
+}
