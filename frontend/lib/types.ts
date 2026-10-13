@@ -1,4 +1,4 @@
-export interface User { id: number; email: string; plan: string; credits: number; is_active: boolean; created_at: string; updated_at: string }
+export interface User { id: number; email: string; plan: string; credits: number; is_active: boolean; google_linked: boolean; created_at: string; updated_at: string }
 export type AuthMeResponse = User;
 export interface LoginRequest { email: string; password: string }
 export type RegisterRequest = LoginRequest;

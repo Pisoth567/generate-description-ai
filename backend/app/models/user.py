@@ -19,6 +19,12 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
     password_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    google_sub: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True, index=True)
+
+    @property
+    def google_linked(self) -> bool:
+        return self.google_sub is not None
+
     plan: Mapped[str] = mapped_column(String, default="free", server_default="free")
     credits: Mapped[int] = mapped_column(Integer, default=10, server_default=text("10"))
     is_active: Mapped[bool] = mapped_column(

@@ -30,6 +30,7 @@ class UserResponse(BaseModel):
     plan: str
     credits: int
     is_active: bool
+    google_linked: bool
     created_at: datetime
     updated_at: datetime
 

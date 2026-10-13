@@ -5,7 +5,7 @@ import { backend, BackendError } from "./backend";
 import { cookieOptions } from "./session";
 import type { PaymentCheckoutResponse, User } from "./types";
 function json(data: unknown, status = 200) { return NextResponse.json(data, { status, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } }); }
-function safeUser(user: User): User { return { id: user.id, email: user.email, plan: user.plan, credits: user.credits, is_active: user.is_active, created_at: user.created_at, updated_at: user.updated_at }; }
+function safeUser(user: User): User { return { id: user.id, email: user.email, plan: user.plan, credits: user.credits, is_active: user.is_active, google_linked: user.google_linked === true, created_at: user.created_at, updated_at: user.updated_at }; }
 export async function proxy(request: Request, path: string) {
   const jar = await cookies();
   try {

@@ -15,10 +15,11 @@ class Settings(BaseSettings):
 
     APP_NAME: str = "Generate Description AI API"
     APP_ENV: str = "development"
+    GOOGLE_CLIENT_ID: str = ""
     FRONTEND_URL: str = "http://localhost:3000"
     openai_api_key: SecretStr | None = Field(default=None, repr=False)
     openai_model: str = ""
-    openai_max_output_tokens: int = Field(default=300, gt=0, le=4096)
+    openai_max_output_tokens: int = Field(default=600, gt=0, le=4096)
     openai_timeout_seconds: float = Field(default=30, gt=0, le=120)
     generation_credit_cost: int = Field(default=1, gt=0, le=2_147_483_647)
     database_url: str = Field(repr=False)

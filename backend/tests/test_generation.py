@@ -83,6 +83,23 @@ class GenerationAPITests(unittest.TestCase):
                          (body['generation_id'], 123, RESULT.description))
         self.assertEqual((row.product_name, row.category, row.user_id), ('Headphones', 'Audio', self.user['id']))
 
+    def test_multiline_text_saved_unchanged_in_history(self):
+        for language, description in (
+            ('English', 'Meet your wireless headphones.\n\nEnjoy the supplied features.\n\nChoose yours today.'),
+            ('Khmer', 'កាសឥតខ្សែសម្រាប់អ្នក។\n\nភ្ជាប់តាម Bluetooth 5.3។\n\nជ្រើសរើសកាសនេះថ្ងៃនេះ។'),
+        ):
+            with self.subTest(language=language):
+                self.ai.return_value = ai_service.AIResult(description, 123)
+                response = self.generate({**PAYLOAD, 'language': language, 'tone': 'friendly'})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()['description'], description)
+                detail = self.client.get(
+                    f"/api/generations/{response.json()['generation_id']}", headers=self.headers)
+                self.assertEqual(detail.json()['generated_text'], description)
+                history = self.client.get('/api/generations', headers=self.headers)
+                self.assertEqual(history.json()[0]['generated_text'], description)
+        self.assert_state(8, 2)
+
     def test_auth_and_insufficient(self):
         for headers in ({}, {'Authorization': 'Bearer invalid'}):
             self.assertEqual(self.generate(headers=headers).status_code, 401)
@@ -218,6 +235,8 @@ class GenerationAPITests(unittest.TestCase):
     def test_configured_cost(self):
         with patch.object(settings, 'generation_credit_cost', 2):
             response = self.generate()
+        self.assertEqual(response.status_code, 200)
+        self.ai.assert_awaited_once()
         self.assertEqual(response.json()['credits_used'], 2)
         self.assert_state(8, 1)
 
@@ -227,9 +246,7 @@ class AIServiceTests(unittest.IsolatedAsyncioTestCase):
         import json
         instructions = {
             'English': 'Write the entire product description in natural English suitable for e-commerce customers.',
-            'Khmer': ('Write the entire product description in natural Khmer suitable for e-commerce customers. '
-                      'Use clear modern Khmer and avoid unnecessary English unless the product data itself '
-                      'contains English technical terms or brand names.'),
+            'Khmer': 'Write the entire product description in natural modern Khmer suitable for e-commerce customers.',
         }
         create = AsyncMock(return_value=SimpleNamespace(output_text='Description', status='completed', usage=None))
         with patch.object(ai_service, 'get_client', return_value=SimpleNamespace(responses=SimpleNamespace(create=create))):
@@ -242,6 +259,31 @@ class AIServiceTests(unittest.IsolatedAsyncioTestCase):
                     self.assertIn(ai_service.INSTRUCTIONS, args['instructions'])
                     self.assertEqual(json.loads(args['input'])['language'], language)
                     self.assertEqual(json.loads(args['input'])['tone'], 'friendly')
+                    prompt = args['instructions']
+                    self.assertIn('approximately 120–180 words', prompt)
+                    if language == 'Khmer':
+                        self.assertIn('comparable detail', prompt)
+                        self.assertIn('2–3 substantial paragraphs', prompt)
+                        self.assertIn('Do not randomly mix English', prompt)
+                    for requirement in ('Do not invent specifications', 'certifications',
+                                        'warranties', 'materials', 'performance claims',
+                                        'measurements', 'health or safety claims',
+                                        'features that the user did not provide',
+                                        'simply avoid mentioning it', 'requested tone',
+                                        'professional means clear, polished, and confident',
+                                        'friendly means warm, approachable',
+                                        'persuasive closing sentence', '2–3 readable paragraphs',
+                                        'Return only the final product description'):
+                        self.assertIn(requirement, prompt)
+
+    async def test_configurable_output_token_limit(self):
+        self.assertEqual(type(settings).model_fields['openai_max_output_tokens'].default, 600)
+        create = AsyncMock(return_value=SimpleNamespace(output_text='Description', status='completed', usage=None))
+        with patch.object(ai_service, 'get_client', return_value=SimpleNamespace(responses=SimpleNamespace(create=create))):
+            for limit in (600, 900):
+                with patch.object(settings, 'openai_max_output_tokens', limit):
+                    await ai_service.generate_product_description(GenerationRequest(**PAYLOAD))
+                    self.assertEqual(create.call_args.kwargs['max_output_tokens'], limit)
 
     async def test_request_injection_usage_and_output(self):
         import json
