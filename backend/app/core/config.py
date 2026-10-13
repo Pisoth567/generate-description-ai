@@ -25,9 +25,13 @@ class Settings(BaseSettings):
     jwt_secret_key: SecretStr = Field(repr=False)
     jwt_algorithm: Literal["HS256"] = "HS256"
     access_token_expire_minutes: int = Field(default=30, gt=0)
-    PAYWAY_MERCHANT_ID: SecretStr | None = None
-    PAYWAY_API_KEY: SecretStr | None = None
-    PAYWAY_ENV: str = "sandbox"
+    PAYWAY_MERCHANT_ID: SecretStr | None = Field(default=None, repr=False)
+    PAYWAY_API_KEY: SecretStr | None = Field(default=None, repr=False)
+    PAYWAY_ENV: Literal["sandbox"] = "sandbox"
+    PAYWAY_RETURN_URL: str = ""
+    PAYWAY_CONTINUE_SUCCESS_URL: str = ""
+    PAYWAY_CANCEL_URL: str = ""
+    PAYWAY_TIMEOUT_SECONDS: float = Field(default=15, gt=0, le=120)
 
     @field_validator("jwt_secret_key")
     @classmethod

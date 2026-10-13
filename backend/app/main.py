@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from app.api.auth import router as auth_router
 from app.api.generate import router as generate_router
 from app.api.generations import router as generations_router
+from app.api.payments import router as payments_router
 from app.services.ai_service import close_client
 from app.api.health import router as health_router
 from app.api.users import router as users_router
@@ -29,6 +30,7 @@ app.add_middleware(
 )
 app.include_router(generate_router, prefix="/api")
 app.include_router(generations_router)
+app.include_router(payments_router)
 app.include_router(health_router)
 app.include_router(users_router)
 app.include_router(auth_router)

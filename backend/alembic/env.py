@@ -5,14 +5,14 @@ from sqlalchemy import create_engine, pool
 
 from app.core.config import settings
 from app.db.base import Base
-from app.models import Generation, User
+from app.models import Generation, Payment, User
 
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Register all models before exposing the shared metadata to Alembic.
-assert User.metadata is Generation.metadata is Base.metadata
+assert User.metadata is Generation.metadata is Payment.metadata is Base.metadata
 target_metadata = Base.metadata
 
 

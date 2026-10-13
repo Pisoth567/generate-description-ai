@@ -10,6 +10,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.generation import Generation
+    from app.models.payment import Payment
 
 
 class User(Base):
@@ -34,3 +35,4 @@ class User(Base):
     generations: Mapped[list[Generation]] = relationship(
         back_populates="user", cascade="all, delete-orphan", passive_deletes=True
     )
+    payments: Mapped[list[Payment]] = relationship(back_populates="user", passive_deletes="all")
