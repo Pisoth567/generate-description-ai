@@ -19,9 +19,6 @@ import httpx
 
 from app.core.config import settings
 
-BASE_URL = "https://checkout-sandbox.payway.com.kh"
-PURCHASE_URL = BASE_URL + "/api/payment-gateway/v1/payments/purchase"
-CHECK_URL = BASE_URL + "/api/payment-gateway/v1/payments/check-transaction-2"
 MAX_CALLBACK_BYTES = 64 * 1024
 MAX_RESPONSE_BYTES = 64 * 1024
 
@@ -57,6 +54,9 @@ def _credentials() -> tuple[str, str]:
     if settings.PAYWAY_ENV != "sandbox":
         raise PayWayUnavailable()
     merchant = settings.PAYWAY_MERCHANT_ID
+    # Purchase and Check Transaction use this credential for HMAC-SHA512.
+    # ABA's sandbox attachment may label it "Public Key"; that does not make
+    # it public: it must remain secret, server-side configuration.
     key = settings.PAYWAY_API_KEY
     if not merchant or not key:
         raise PayWayUnavailable()
@@ -68,6 +68,33 @@ def _credentials() -> tuple[str, str]:
 
 def _request_time() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+
+
+def _payway_base_url() -> str:
+    # Backend configuration only; validate before returning or sending a URL.
+    value = settings.PAYWAY_API_URL
+    try:
+        if any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in value) or "\\" in value:
+            raise ValueError
+        parsed = urlsplit(value)
+        if (parsed.scheme != "https" or not parsed.hostname
+                or parsed.username is not None or parsed.password is not None
+                or "#" in value or "?" in value):
+            raise ValueError
+        # Accessing port also rejects malformed or out-of-range ports.
+        if parsed.port == 0:
+            raise ValueError
+    except ValueError:
+        raise PayWayUnavailable() from None
+    return value.rstrip("/")
+
+
+def purchase_url() -> str:
+    return _payway_base_url() + "/api/payment-gateway/v1/payments/purchase"
+
+
+def check_url() -> str:
+    return _payway_base_url() + "/api/payment-gateway/v1/payments/check-transaction-2"
 
 
 def _trusted_url(value: str) -> str:
@@ -272,11 +299,12 @@ def parse_transaction(raw: bytes) -> TransactionResult:
 
 
 async def check_transaction(tran_id: str) -> TransactionResult:
+    url = check_url()
     fields = build_check_fields(tran_id)
     try:
         # No automatic retries; never follow redirects with signed credentials.
         async with httpx.AsyncClient(timeout=settings.PAYWAY_TIMEOUT_SECONDS, follow_redirects=False) as client:
-            async with client.stream("POST", CHECK_URL, json=fields) as response:
+            async with client.stream("POST", url, json=fields) as response:
                 response.raise_for_status()
                 raw = bytearray()
                 async for chunk in response.aiter_bytes():

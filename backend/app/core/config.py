@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     PAYWAY_MERCHANT_ID: SecretStr | None = Field(default=None, repr=False)
     PAYWAY_API_KEY: SecretStr | None = Field(default=None, repr=False)
     PAYWAY_ENV: Literal["sandbox"] = "sandbox"
+    PAYWAY_API_URL: str = "https://checkout-sandbox.payway.com.kh"
     PAYWAY_RETURN_URL: str = ""
     PAYWAY_CONTINUE_SUCCESS_URL: str = ""
     PAYWAY_CANCEL_URL: str = ""

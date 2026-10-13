@@ -23,7 +23,7 @@ from pydantic import SecretStr
 from sqlalchemy import event, inspect, select
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.core.config import settings
+from app.core.config import Settings, settings
 from app.db.database import SessionLocal, engine
 from app.main import app
 from app.models.payment import Payment
@@ -43,7 +43,7 @@ class PaymentAPITests(unittest.TestCase):
         self.addCleanup(self.cleanup_users)
         self.key = secrets.token_urlsafe(48)
         self.callback_key = secrets.token_urlsafe(48)
-        for name, value in (("PAYWAY_ENV", "sandbox"), ("PAYWAY_MERCHANT_ID", SecretStr("test-merchant")),
+        for name, value in (("PAYWAY_API_URL", "https://checkout-sandbox.payway.com.kh"), ("PAYWAY_ENV", "sandbox"), ("PAYWAY_MERCHANT_ID", SecretStr("test-merchant")),
                             ("PAYWAY_API_KEY", SecretStr(self.key)), ("PAYWAY_RETURN_URL", ""),
                             ("PAYWAY_CONTINUE_SUCCESS_URL", ""), ("PAYWAY_CANCEL_URL", "")):
             patcher = patch.object(settings, name, value)
@@ -117,7 +117,7 @@ class PaymentAPITests(unittest.TestCase):
         self.assertEqual(row.tran_id, checkout["tran_id"])
         self.assertRegex(row.tran_id, r"^[a-f0-9]{20}$")
         self.assertIsNone(row.credited_at)
-        self.assertEqual(checkout["checkout_url"], payway_service.PURCHASE_URL)
+        self.assertEqual(checkout["checkout_url"], "https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/purchase")
         fields = checkout["fields"]
         self.assertEqual(set(fields), {"req_time", "merchant_id", "tran_id", "amount", "currency", "return_params", "hash"})
         self.assertEqual(fields["amount"], "1.99")
@@ -125,6 +125,21 @@ class PaymentAPITests(unittest.TestCase):
         preimage = fields["req_time"] + "test-merchant" + row.tran_id + "1.99USD" + fields["return_params"]
         self.assertTrue(hmac.compare_digest(fields["hash"], sign(preimage, self.key)))
         self.assertFalse(self.key in json.dumps(checkout))
+        self.check.assert_not_called()
+
+    def test_configured_checkout_url(self):
+        with patch.object(settings, "PAYWAY_API_URL", "https://payway.example/gateway///"):
+            checkout = self.create_payment()
+        self.assertEqual(checkout["checkout_url"],
+                         "https://payway.example/gateway/api/payment-gateway/v1/payments/purchase")
+        self.check.assert_not_called()
+
+    def test_invalid_api_url_is_sanitized_and_rolls_back(self):
+        with patch.object(settings, "PAYWAY_API_URL", "https://user:private@payway.example/#private"):
+            response = self.client.post("/api/payments", json={"package_code": "starter"}, headers=self.headers)
+        self.assertEqual((response.status_code, response.json()),
+                         (503, {"detail": "Payment provider is temporarily unavailable"}))
+        self.state(10, 0)
         self.check.assert_not_called()
 
     def test_all_packages_and_unique_ids(self):
@@ -141,7 +156,9 @@ class PaymentAPITests(unittest.TestCase):
                         {"package_code": "starter", "amount": "0.01"},
                         {"package_code": "starter", "credits": 999999},
                         {"package_code": "starter", "currency": "KHR"},
-                        {"package_code": "starter", "user_id": 1}):
+                        {"package_code": "starter", "user_id": 1},
+                        {"package_code": "starter", "api_url": "https://client.example"},
+                        {"package_code": "starter", "checkout_url": "https://client.example"}):
             with self.subTest(payload=payload):
                 response = self.client.post("/api/payments", json=payload, headers=self.headers)
                 self.assertEqual(response.status_code, 422)
@@ -331,11 +348,49 @@ class PaymentAPITests(unittest.TestCase):
 class PayWayProtocolTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.key = secrets.token_urlsafe(48)
-        for name, value in (("PAYWAY_ENV", "sandbox"), ("PAYWAY_API_KEY", SecretStr(self.key)),
+        for name, value in (("PAYWAY_API_URL", "https://checkout-sandbox.payway.com.kh"), ("PAYWAY_ENV", "sandbox"), ("PAYWAY_API_KEY", SecretStr(self.key)),
                             ("PAYWAY_MERCHANT_ID", SecretStr("test-merchant"))):
             patcher = patch.object(settings, name, value)
             patcher.start()
             self.addCleanup(patcher.stop)
+
+    def test_default_and_normalized_api_urls(self):
+        default = "https://checkout-sandbox.payway.com.kh"
+        self.assertEqual(Settings.model_fields["PAYWAY_API_URL"].default, default)
+        for base in (default, "https://payway.example/gateway"):
+            for suffix in ("", "/", "///"):
+                with self.subTest(base=base, suffix=suffix), patch.object(settings, "PAYWAY_API_URL", base + suffix):
+                    self.assertEqual(payway_service.purchase_url(), base + "/api/payment-gateway/v1/payments/purchase")
+                    self.assertEqual(payway_service.check_url(), base + "/api/payment-gateway/v1/payments/check-transaction-2")
+
+    async def test_invalid_api_urls_fail_before_network(self):
+        for url in ("", "http://payway.example", "https:///missing", "https://",
+                    "https://user@payway.example", "https://user:password@payway.example",
+                    "https://@payway.example", "https://:password@payway.example",
+                    "https://payway.example/#fragment", "https://payway.example/#",
+                    "https://payway.example/?query", "https://payway.example:bad",
+                    "https://payway.example:65536", "https://[invalid", "https://payway.example/\n"):
+            with self.subTest(url=url), patch.object(settings, "PAYWAY_API_URL", url):
+                with patch.object(payway_service.httpx, "AsyncClient") as client:
+                    for get_url in (payway_service.purchase_url, payway_service.check_url):
+                        with self.assertRaisesRegex(payway_service.PayWayUnavailable,
+                                                    "^Payment provider is temporarily unavailable$"):
+                            get_url()
+                    with self.assertRaises(payway_service.PayWayUnavailable):
+                        await payway_service.check_transaction("abc123")
+                    client.assert_not_called()
+
+    async def test_custom_check_url_uses_mock_transport(self):
+        seen = []
+        def handler(request):
+            seen.append(request)
+            self.assertEqual(str(request.url),
+                             "https://payway.example/gateway/api/payment-gateway/v1/payments/check-transaction-2")
+            return httpx.Response(200, json={"status": {"code": "00", "tran_id": "abc123"},
+                                            "data": {"payment_status_code": 2, "payment_status": "PENDING"}})
+        with patch.object(settings, "PAYWAY_API_URL", "https://payway.example/gateway/"):
+            await self.provider_call(handler)
+        self.assertEqual(len(seen), 1)
 
     def test_official_purchase_and_check_hash_recipes(self):
         with patch.object(payway_service, "_request_time", return_value="20261013000000"), \
@@ -386,7 +441,7 @@ class PayWayProtocolTests(unittest.IsolatedAsyncioTestCase):
         seen = []
         def handler(request):
             seen.append(request)
-            self.assertEqual(str(request.url), payway_service.CHECK_URL)
+            self.assertEqual(str(request.url), "https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/check-transaction-2")
             self.assertEqual(request.method, "POST")
             fields = json.loads(request.content)
             self.assertEqual(set(fields), {"req_time", "merchant_id", "tran_id", "hash"})

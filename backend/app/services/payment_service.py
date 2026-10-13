@@ -54,7 +54,7 @@ def create_payment(db: Session, user_id: int, code: PaymentPackageCode) -> Payme
                     fields = payway_service.build_purchase_fields(payment.tran_id, payment.amount,
                                                                  payment.currency, payment.id)
                     response = PaymentCheckoutResponse(payment_id=payment.id, tran_id=payment.tran_id,
-                                                       checkout_url=payway_service.PURCHASE_URL, fields=fields)
+                                                       checkout_url=payway_service.purchase_url(), fields=fields)
                 return response
             except IntegrityError as exc:
                 diag = getattr(exc.orig, "diag", None)
