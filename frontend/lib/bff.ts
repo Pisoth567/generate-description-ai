@@ -58,11 +58,8 @@ export async function proxy(request: Request, path: string) {
     if (path === "/api/auth/me" || path === "/api/auth/register") return json(safeUser(data as User), path.endsWith("register") ? 201 : 200);
     if (path === "/api/payments" && request.method === "POST") {
       const checkout = data as PaymentCheckoutResponse;
-      const allowed = process.env.PAYWAY_CHECKOUT_ORIGIN ?? "https://checkout-sandbox.payway.com.kh";
-      let url: URL;
-      try { url = new URL(checkout.checkout_url); } catch { throw new BackendError(502, path); }
-      if (!["https://checkout-sandbox.payway.com.kh", "https://checkout.payway.com.kh"].includes(allowed) || url.origin !== allowed || url.username || url.password || url.hash || !Number.isSafeInteger(checkout.payment_id) || checkout.payment_id <= 0 || !checkout.fields || Object.values(checkout.fields).some(v => typeof v !== "string")) throw new BackendError(502, path);
-      jar.set("pending_payment", String(checkout.payment_id), { ...cookieOptions, maxAge: 86400 });
+      if (checkout.checkout?.type !== "aba_qr" || !Number.isSafeInteger(checkout.payment?.id) || checkout.payment.id <= 0) throw new BackendError(502, path);
+      jar.set("pending_payment", String(checkout.payment.id), { ...cookieOptions, maxAge: 86400 });
       return json(checkout, 201);
     }
     return json(data);

@@ -298,6 +298,85 @@ def parse_transaction(raw: bytes) -> TransactionResult:
         raise PayWayUnavailable() from None
 
 
+# Bound encoded response separately from the decoded PNG (256 KiB).
+MAX_QR_IMAGE_BYTES = 256 * 1024
+MAX_PURCHASE_RESPONSE_BYTES = 512 * 1024
+PNG_PREFIX = "data:image/png;base64,"
+
+
+@dataclass(frozen=True)
+class PurchaseResult:
+    tran_id: str
+    qr_image: str
+    aba_deeplink: str
+    app_store_url: str | None
+    play_store_url: str | None
+
+
+def _provider_link(value, scheme: str, hosts: set[str] | None = None) -> str:
+    if (not isinstance(value, str) or not value or len(value) > 8192
+            or any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in value)
+            or "\\" in value):
+        raise ValueError
+    parsed = urlsplit(value)
+    if (not value.startswith(scheme + "://") or parsed.scheme != scheme or not parsed.hostname
+            or parsed.username is not None or parsed.password is not None or parsed.fragment
+            or parsed.port not in (None, 443) or (hosts is not None and parsed.hostname not in hosts)):
+        raise ValueError
+    return value
+
+
+def parse_purchase(raw: bytes, tran_id: str) -> PurchaseResult:
+    try:
+        if len(raw) > MAX_PURCHASE_RESPONSE_BYTES:
+            raise ValueError
+        body = _json(raw)
+        if not isinstance(body, dict) or not isinstance(body.get("status"), dict):
+            raise ValueError
+        status = body["status"]
+        if (status.get("code") != "00" or not isinstance(status.get("tran_id"), str)
+                or not status["tran_id"] or status["tran_id"] != tran_id):
+            raise ValueError
+        qr = body.get("qrImage")
+        if (not isinstance(qr, str) or not qr.startswith(PNG_PREFIX)
+                or len(qr) > len(PNG_PREFIX) + 4 * ((MAX_QR_IMAGE_BYTES + 2) // 3)):
+            raise ValueError
+        encoded = qr[len(PNG_PREFIX):]
+        decoded = base64.b64decode(encoded, validate=True)
+        if (len(decoded) > MAX_QR_IMAGE_BYTES or not decoded.startswith(b"\x89PNG\r\n\x1a\n")
+                or base64.b64encode(decoded).decode("ascii") != encoded):
+            raise ValueError
+        deep = _provider_link(body.get("abapay_deeplink"), "abamobilebank")
+        stores = []
+        for key, hosts in (("app_store", {"apps.apple.com", "itunes.apple.com"}),
+                           ("play_store", {"play.google.com"})):
+            value = body.get(key)
+            stores.append(None if value is None else _provider_link(value, "https", hosts))
+        # code 00 validates QR creation only. This type cannot finalize a payment.
+        return PurchaseResult(tran_id, qr, deep, *stores)
+    except (KeyError, ValueError, TypeError, RecursionError, UnicodeError):
+        raise PayWayUnavailable() from None
+
+
+async def purchase(tran_id: str, amount: Decimal, currency: str, payment_id: int) -> PurchaseResult:
+    url = purchase_url()
+    fields = build_purchase_fields(tran_id, amount, currency, payment_id)
+    try:
+        async with httpx.AsyncClient(timeout=settings.PAYWAY_TIMEOUT_SECONDS, follow_redirects=False) as client:
+            # Preserve Purchase's signed fields and multipart contract. No retries.
+            async with client.stream("POST", url, files={k: (None, v) for k, v in fields.items()},
+                                     headers={"Accept": "application/json"}) as response:
+                response.raise_for_status()
+                raw = bytearray()
+                async for chunk in response.aiter_bytes():
+                    raw.extend(chunk)
+                    if len(raw) > MAX_PURCHASE_RESPONSE_BYTES:
+                        raise PayWayUnavailable()
+        return parse_purchase(bytes(raw), tran_id)
+    except httpx.HTTPError:
+        raise PayWayUnavailable() from None
+
+
 async def check_transaction(tran_id: str) -> TransactionResult:
     url = check_url()
     fields = build_check_fields(tran_id)

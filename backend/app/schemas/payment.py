@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -42,8 +43,14 @@ class PaymentResponse(BaseModel):
     paid_at: datetime | None
 
 
+class QRCheckout(BaseModel):
+    type: Literal["aba_qr"] = "aba_qr"
+    qr_image: str
+    aba_deeplink: str
+    app_store_url: str | None = None
+    play_store_url: str | None = None
+
+
 class PaymentCheckoutResponse(BaseModel):
-    payment_id: int
-    tran_id: str
-    checkout_url: str
-    fields: dict[str, str]
+    payment: PaymentResponse
+    checkout: QRCheckout

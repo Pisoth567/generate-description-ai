@@ -50,7 +50,7 @@ a missed callback using independently checked provider state and atomic creditin
 ## Configuration
 
 Configure secrets privately in the ignored `.env`; `.env.example` has no real
-credentials. The sandbox base URL is fixed to `https://checkout-sandbox.payway.com.kh`.
+credentials. The configurable `PAYWAY_API_URL` is a base URL only (default `https://checkout-sandbox.payway.com.kh`).
 Only `PAYWAY_ENV=sandbox` is accepted; production must be introduced explicitly in
 a separate change, with separately provisioned credentials and endpoint selection.
 
@@ -69,13 +69,29 @@ without explicit approval.
 
 - `GET /api/payments/packages`: public, database-free trusted catalog:
   starter = USD 1.99 / 100 credits; value = USD 4.99 / 500; pro = USD 9.99 / 1500.
-- `POST /api/payments`: JWT required; accepts only `package_code`. Returns 201
-  with `payment_id`, `tran_id`, `checkout_url`, and signed `fields`. Amounts are
-  Decimal-backed strings. No credits are granted here.
-- Submit the returned fields unchanged to `checkout_url` using an HTML POST form
-  with `enctype="multipart/form-data"`. The response includes the protocol-required
-  merchant identifier and request hash, never the API key or callback key.
-  Redirect/success/cancel pages are navigation only, not payment evidence.
+- `POST /api/payments`: JWT required; accepts only `package_code`. Commits a
+  pending payment, then calls Purchase server-side using the existing signed
+  multipart fields, an Accept JSON header, and no redirects/retries. Returns 201
+  with `payment` and `checkout` (`type=aba_qr`, `qr_image`, `aba_deeplink`, optional
+  `app_store_url` and `play_store_url`). No signed fields reach the browser.
+- Purchase `status.code="00"` means QR creation only, never payment approval.
+  Status must be an object and its nonempty string transaction ID must match.
+  PNG data URLs require strict canonical Base64, a PNG signature, and at most
+  256 KiB decoded bytes; the entire response is limited to 512 KiB. Deep links
+  must use `abamobilebank://`. Optional store URLs must be HTTPS on
+  `apps.apple.com`, `itunes.apple.com`, or `play.google.com` as appropriate.
+  Invalid values fail the entire response with a sanitized 503. Credentials,
+  control characters, backslashes, fragments and unexpected ports are rejected.
+- The QR and deep link exist only in the authenticated creation response and
+  active Pricing component state. No QR image/string is saved in the database,
+  cookies, localStorage or sessionStorage. The BFF returns `Cache-Control: no-store`.
+  Leaving/reloading checkout loses the QR; Payments retains manual verification
+  and explains recovery. No old Purchase is reissued or QR reconstructed.
+- Manual verification retains the QR while pending, refreshes `/api/auth/me`
+  after approval, and offers a generator link. There is no automatic polling.
+- The public Purchase documentation currently illustrates HTML; this JSON parser
+  targets the working sandbox QR response supplied for this integration. HTML
+  responses fail safely. Live interoperability remains a manual review check.
 - `POST /api/payments/payway/callback`: JSON, no JWT; requires verified
   `X-PAYWAY-HMAC-SHA512` before any provider check or mutation. See blocker above.
 - `POST /api/payments/{payment_id}/verify`: authenticated owner recovery.
@@ -148,3 +164,50 @@ git diff --check
 Stop the test server with Ctrl+C afterwards. The tests create isolated PostgreSQL
 accounts/payment records and soft-deactivate their accounts during cleanup, matching
 the existing suite. They require the migration and mock PayWay and OpenAI.
+
+## One manual sandbox QR end-to-end test (after review only)
+
+Use existing private sandbox configuration; do not change `.env` through these
+commands. `PAYWAY_API_URL` must contain only the base URL. These start local
+services but do not initiate a payment themselves.
+
+Terminal 1, from the repository root:
+
+```bash
+cd backend
+source .venv/bin/activate
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log
+```
+
+Terminal 2, from the repository root (existing frontend BACKEND_URL must point
+at that backend):
+
+```bash
+cd frontend
+npm run dev -- --hostname localhost --port 3000
+```
+
+1. Open `http://localhost:3000`, sign in, and record the displayed credit balance.
+2. Open Pricing and buy Starter **once**. Confirm USD 1.99 / 100 credits,
+   pending status, QR image, and unchanged credits. Keep this page open.
+3. Click Verify payment once before paying. Expect pending and unchanged credits.
+4. Scan with the ABA sandbox-supported mobile flow or explicitly click Open ABA
+   Mobile. Complete only this reviewed sandbox payment.
+5. Click Verify payment. Expect paid, 100 credits added, and balance increased by
+   exactly 100. A pending result means wait and manually verify again; do not buy
+   another package. A 503 leaves the payment recoverable via Payments.
+6. In the browser console, independently repeat verification of the same payment
+   (replace 42 with its ID from the application's BFF response). This uses the
+   existing HttpOnly cookie; do not copy or print any JWT:
+
+```javascript
+await fetch('/api/payments/42/verify', {
+  method: 'POST', credentials: 'same-origin',
+  headers: { 'Content-Type': 'application/json' }, body: '{}'
+}).then(r => ({ status: r.status }));
+location.assign('/payments');
+```
+
+7. Confirm one paid record and the same credit balance, then open Generate.
+   Do not send a callback: callback key resolution remains disabled.
+8. Stop each local server with Ctrl+C when finished.

@@ -1,2 +1,13 @@
 "use client";
-export default function ErrorPage({ reset }: { reset: () => void }) { return <main className="container"><h1>Service temporarily unavailable</h1><p role="alert">We could not load this page. Please try again.</p><button type="button" onClick={reset}>Try again</button></main>; }
+import { Button } from "@/components/ui/button";
+export default function ErrorPage({ reset }: { reset: () => void }) {
+  return (
+    <div className="page-container">
+      <h1>Service temporarily unavailable</h1>
+      <p role="alert">We could not load this page. Please try again.</p>
+      <Button type="button" onClick={reset}>
+        Try again
+      </Button>
+    </div>
+  );
+}

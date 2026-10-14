@@ -31,6 +31,16 @@ from app.models.user import User
 from app.services import payment_service, payway_service, user_service
 
 
+QR = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aLe8AAAAASUVORK5CYII="
+
+
+def qr_payload(tran_id="abc123"):
+    return {"status": {"code": "00", "tran_id": tran_id}, "qrImage": QR,
+            "qrString": "private-unused-qr", "abapay_deeplink": "abamobilebank://ababank.com?qr=test",
+            "app_store": "https://itunes.apple.com/app/id968860649",
+            "play_store": "https://play.google.com/store/apps/details?id=kh.com.ababank"}
+
+
 def sign(message, key):
     return base64.b64encode(hmac.new(key.encode(), message.encode(), hashlib.sha512).digest()).decode()
 
@@ -55,6 +65,19 @@ class PaymentAPITests(unittest.TestCase):
         patcher = patch.object(payway_service, "check_transaction", new_callable=AsyncMock)
         self.check = patcher.start()
         self.addCleanup(patcher.stop)
+        # Mock the HTTP boundary, so every API test exercises the real QR parser.
+        real_client = httpx.AsyncClient
+        self.purchase_payload = None
+        self.purchase_requests = []
+        def handler(request):
+            self.purchase_requests.append(request)
+            import re
+            tran_id = re.search(rb'name="tran_id"\r\n\r\n([^\r]+)', request.content)[1].decode()
+            return httpx.Response(200, json=self.purchase_payload if self.purchase_payload is not None else qr_payload(tran_id))
+        patcher = patch.object(payway_service.httpx, "AsyncClient",
+                               side_effect=lambda **kwargs: real_client(transport=httpx.MockTransport(handler), **kwargs))
+        patcher.start()
+        self.addCleanup(patcher.stop)
         self.user, self.headers = self.register()
 
     def cleanup_users(self):
@@ -76,7 +99,9 @@ class PaymentAPITests(unittest.TestCase):
         response = self.client.post("/api/payments", json={"package_code": code},
                                     headers=self.headers if headers is None else headers)
         self.assertEqual(response.status_code, 201)
-        return response.json()
+        data = response.json()
+        # Convenience aliases only inside the legacy accounting tests.
+        return {**data, "payment_id": data["payment"]["id"], "tran_id": data["payment"]["tran_id"]}
 
     def state(self, credits, count=1):
         with SessionLocal() as db:
@@ -117,22 +142,54 @@ class PaymentAPITests(unittest.TestCase):
         self.assertEqual(row.tran_id, checkout["tran_id"])
         self.assertRegex(row.tran_id, r"^[a-f0-9]{20}$")
         self.assertIsNone(row.credited_at)
-        self.assertEqual(checkout["checkout_url"], "https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments/purchase")
-        fields = checkout["fields"]
-        self.assertEqual(set(fields), {"req_time", "merchant_id", "tran_id", "amount", "currency", "return_params", "hash"})
-        self.assertEqual(fields["amount"], "1.99")
-        self.assertEqual(json.loads(fields["return_params"]), {"payment_id": row.id})
-        preimage = fields["req_time"] + "test-merchant" + row.tran_id + "1.99USD" + fields["return_params"]
-        self.assertTrue(hmac.compare_digest(fields["hash"], sign(preimage, self.key)))
-        self.assertFalse(self.key in json.dumps(checkout))
+        self.assertIsNone(row.paid_at)
+        self.assertEqual(checkout["payment"]["status"], "pending")
+        self.assertEqual(checkout["checkout"]["qr_image"], QR)
+        self.assertEqual(checkout["checkout"]["aba_deeplink"], qr_payload()["abapay_deeplink"])
+        for private in (self.key, "qrString", "private-unused-qr", "hash", "merchant_id", "fields"):
+            self.assertNotIn(private, json.dumps(checkout))
         self.check.assert_not_called()
+        self.assertEqual(len(self.purchase_requests), 1)
 
     def test_configured_checkout_url(self):
         with patch.object(settings, "PAYWAY_API_URL", "https://payway.example/gateway///"):
-            checkout = self.create_payment()
-        self.assertEqual(checkout["checkout_url"],
+            self.create_payment()
+        self.assertEqual(str(self.purchase_requests[0].url),
                          "https://payway.example/gateway/api/payment-gateway/v1/payments/purchase")
-        self.check.assert_not_called()
+
+    def test_bad_purchase_preserves_pending_without_credit(self):
+        for payload in ({}, {"status": {"code": "01"}}, qr_payload("wrong")):
+            self.purchase_payload = payload
+            response = self.client.post("/api/payments", json={"package_code": "starter"}, headers=self.headers)
+            self.assertEqual((response.status_code, response.json()),
+                             (503, {"detail": "Payment provider is temporarily unavailable"}))
+        for row in self.state(10, 3):
+            self.assertEqual(row.status, "pending")
+            self.assertIsNone(row.paid_at)
+            self.assertIsNone(row.credited_at)
+
+    def test_manual_pending_and_mismatches(self):
+        checkout = self.create_payment()
+        for result, status in ((payway_service.TransactionResult(checkout["tran_id"], 2, "PENDING", None, None), 200),
+                               (replace(self.approved(checkout), amount=Decimal("0.01")), 409),
+                               (replace(self.approved(checkout), currency="KHR"), 409),
+                               (replace(self.approved(checkout), tran_id="wrong"), 409)):
+            self.check.return_value = result
+            response = self.client.post(f'/api/payments/{checkout["payment_id"]}/verify', headers=self.headers)
+            self.assertEqual(response.status_code, status)
+            self.assertEqual(self.state(10)[0].status, "pending")
+
+    def test_concurrent_manual_verifies(self):
+        checkout = self.create_payment()
+        barrier = Barrier(2)
+        async def check(tran_id):
+            await asyncio.to_thread(barrier.wait, 10)
+            return self.approved(checkout)
+        self.check.side_effect = check
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(self.client.post, f'/api/payments/{checkout["payment_id"]}/verify', headers=self.headers) for _ in range(2)]
+            self.assertEqual([f.result(timeout=20).status_code for f in futures], [200, 200])
+        self.assertEqual(self.state(110)[0].status, "paid")
 
     def test_invalid_api_url_is_sanitized_and_rolls_back(self):
         with patch.object(settings, "PAYWAY_API_URL", "https://user:private@payway.example/#private"):
@@ -353,6 +410,48 @@ class PayWayProtocolTests(unittest.IsolatedAsyncioTestCase):
             patcher = patch.object(settings, name, value)
             patcher.start()
             self.addCleanup(patcher.stop)
+
+    def test_qr_response_validation(self):
+        self.assertEqual(payway_service.parse_purchase(json.dumps(qr_payload()).encode(), "abc123").qr_image, QR)
+        bad = [[], None, {}, {**qr_payload(), "status": None}, {**qr_payload(), "status": []}]
+        for status in ({"code": "01", "tran_id": "abc123"}, {"code": 0, "tran_id": "abc123"},
+                       {"code": "00", "tran_id": ""}, {"code": "00", "tran_id": "wrong"}):
+            bad.append({**qr_payload(), "status": status})
+        for qr in (None, "https://example.com/qr.png", "data:image/svg+xml;base64,AAAA", "data:image/png;base64,!!!",
+                   "data:image/png;base64," + base64.b64encode(b"not a PNG").decode(),
+                   "data:image/png;base64," + base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"x" * payway_service.MAX_QR_IMAGE_BYTES).decode()):
+            bad.append({**qr_payload(), "qrImage": qr})
+        for link in (None, 1, "javascript:alert(1)", "https://ababank.com", "abamobilebank://", "abamobilebank://user@host", "abamobilebank://host\n"):
+            bad.append({**qr_payload(), "abapay_deeplink": link})
+        for key in ("app_store", "play_store"):
+            for link in ("http://play.google.com", "https://evil.example", "https://play.google.com.evil.example", "https://user@play.google.com", "https://play.google.com:444"):
+                bad.append({**qr_payload(), key: link})
+        for payload in bad:
+            with self.subTest(payload_index=bad.index(payload)), self.assertRaises(payway_service.PayWayUnavailable):
+                payway_service.parse_purchase(json.dumps(payload).encode(), "abc123")
+        for raw in (b"not json", b'{"status":{},"status":{}}', b"x" * (payway_service.MAX_PURCHASE_RESPONSE_BYTES + 1)):
+            with self.assertRaises(payway_service.PayWayUnavailable):
+                payway_service.parse_purchase(raw, "abc123")
+
+    async def test_purchase_transport_failures_no_retry(self):
+        real_client = httpx.AsyncClient
+        for kind in ("timeout", "connection", "redirect", "5xx", "oversize", "html"):
+            seen = []
+            def handler(request):
+                seen.append(request)
+                if kind == "timeout":
+                    raise httpx.ReadTimeout("private", request=request)
+                if kind == "connection":
+                    raise httpx.ConnectError("private", request=request)
+                return httpx.Response(302 if kind == "redirect" else 500 if kind == "5xx" else 200,
+                                      content=b"x" * (payway_service.MAX_PURCHASE_RESPONSE_BYTES + 1) if kind == "oversize" else b"<html>private</html>")
+            def client(**kwargs):
+                self.assertFalse(kwargs["follow_redirects"])
+                self.assertEqual(kwargs["timeout"], settings.PAYWAY_TIMEOUT_SECONDS)
+                return real_client(transport=httpx.MockTransport(handler), **kwargs)
+            with patch.object(payway_service.httpx, "AsyncClient", side_effect=client), self.assertRaises(payway_service.PayWayUnavailable):
+                await payway_service.purchase("abc123", Decimal("1.99"), "USD", 1)
+            self.assertEqual(len(seen), 1)
 
     def test_default_and_normalized_api_urls(self):
         default = "https://checkout-sandbox.payway.com.kh"

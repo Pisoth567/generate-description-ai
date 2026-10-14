@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import CurrentUser, Database
-from app.schemas.payment import PaymentCheckoutResponse, PaymentCreateRequest, PaymentPackageResponse, PaymentResponse
+from app.schemas.payment import PaymentCheckoutResponse, PaymentCreateRequest, PaymentPackageResponse, PaymentResponse, QRCheckout
 from app.services import payment_service, payway_service
 from app.services.user_service import database_operation
 
@@ -34,11 +34,16 @@ def packages():
 
 
 @router.post("", response_model=PaymentCheckoutResponse, status_code=201)
-def create(request: PaymentCreateRequest, current_user: CurrentUser, db: Database):
+async def create(request: PaymentCreateRequest, current_user: CurrentUser, db: Database):
     user_id = current_user.id
     with payment_errors(), database_operation(db):
         db.rollback()
-        return payment_service.create_payment(db, user_id, request.package_code)
+        payment = await run_in_threadpool(payment_service.create_payment, db, user_id, request.package_code)
+        # Commit the pending attempt before network I/O. QR success is NOT payment approval.
+        result = await payway_service.purchase(payment.tran_id, payment.amount, payment.currency, payment.id)
+        return PaymentCheckoutResponse(payment=payment, checkout=QRCheckout(
+            qr_image=result.qr_image, aba_deeplink=result.aba_deeplink,
+            app_store_url=result.app_store_url, play_store_url=result.play_store_url))
 
 
 @router.post("/payway/callback")

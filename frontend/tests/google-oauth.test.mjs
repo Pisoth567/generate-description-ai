@@ -74,7 +74,7 @@ test('start generates unique state/nonce, S256 PKCE, short HttpOnly cookies', as
 test('login exchanges code privately, sets existing app cookie and clears OAuth cookies', async () => {
   const f = fixture(); await f.start(); const nonce = f.jar.get('google_oauth_nonce');
   const response = await f.callback();
-  assert.equal(new URL(response.headers.get('location')).pathname, '/dashboard');
+  assert.equal(new URL(response.headers.get('location')).pathname, '/generate');
   assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
   assert.equal(response.headers.get('cache-control'), 'no-store');
   const exchange = f.calls.find(c => c.kind === 'google');

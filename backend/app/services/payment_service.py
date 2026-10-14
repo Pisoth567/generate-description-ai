@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.payment import Payment
-from app.schemas.payment import PaymentCheckoutResponse, PaymentPackageCode, PaymentPackageResponse, PaymentResponse
+from app.schemas.payment import PaymentPackageCode, PaymentPackageResponse, PaymentResponse
 from app.services import payway_service
 from app.services.user_service import DatabaseFailure, database_operation, locked_user
 
@@ -40,7 +40,7 @@ def new_tran_id() -> str:
     return secrets.token_hex(10)
 
 
-def create_payment(db: Session, user_id: int, code: PaymentPackageCode) -> PaymentCheckoutResponse:
+def create_payment(db: Session, user_id: int, code: PaymentPackageCode) -> PaymentResponse:
     package = PACKAGES[code]
     with database_operation(db):
         for _ in range(3):
@@ -51,10 +51,10 @@ def create_payment(db: Session, user_id: int, code: PaymentPackageCode) -> Payme
                                       provider="aba_payway", status="pending")
                     db.add(payment)
                     db.flush()
-                    fields = payway_service.build_purchase_fields(payment.tran_id, payment.amount,
-                                                                 payment.currency, payment.id)
-                    response = PaymentCheckoutResponse(payment_id=payment.id, tran_id=payment.tran_id,
-                                                       checkout_url=payway_service.purchase_url(), fields=fields)
+                    payway_service.build_purchase_fields(payment.tran_id, payment.amount,
+                                                         payment.currency, payment.id)
+                    payway_service.purchase_url()  # Validate configuration before committing.
+                    response = PaymentResponse.model_validate(payment)
                 return response
             except IntegrityError as exc:
                 diag = getattr(exc.orig, "diag", None)

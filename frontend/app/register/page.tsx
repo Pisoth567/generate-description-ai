@@ -1,3 +1,19 @@
+import { publicMetadata } from "@/lib/seo";
 import { Suspense } from "react";
+import { AuthLoading } from "@/components/auth-loading";
 import { AuthForm } from "@/components/auth-form";
-export default function Page() { return <Suspense fallback={<p role="status">Loading…</p>}><AuthForm register={true}/></Suspense>; }
+export const metadata = {
+  ...publicMetadata(
+    "Create an account",
+    "/register",
+    "Create an account to write product descriptions in English and Khmer.",
+  ),
+  robots: { index: false, follow: false },
+};
+export default function Page() {
+  return (
+    <Suspense fallback={<AuthLoading />}>
+      <AuthForm register={true} />
+    </Suspense>
+  );
+}

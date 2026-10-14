@@ -96,7 +96,7 @@ export async function callbackGoogle(request: Request) {
     }
     const login = await backend<{ access_token: string; expires_in: number }>("/api/auth/google", undefined, body);
     if (typeof login.access_token !== "string" || !login.access_token || !Number.isInteger(login.expires_in) || login.expires_in <= 0) return failed();
-    const response = clear(redirect(request, "/dashboard", origin));
+    const response = clear(redirect(request, "/generate", origin));
     response.cookies.set("access_token", login.access_token, { ...cookieOptions, maxAge: login.expires_in });
     response.cookies.set("pending_payment", "", { ...cookieOptions, maxAge: 0 });
     return response;
