@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -34,6 +35,20 @@ class Settings(BaseSettings):
     PAYWAY_CONTINUE_SUCCESS_URL: str = ""
     PAYWAY_CANCEL_URL: str = ""
     PAYWAY_TIMEOUT_SECONDS: float = Field(default=15, gt=0, le=120)
+
+    @field_validator("FRONTEND_URL")
+    @classmethod
+    def require_frontend_origin(cls, value: str) -> str:
+        url = urlsplit(value)
+        local = url.scheme == "http" and url.hostname in {"localhost", "127.0.0.1"}
+        if (not url.hostname or (url.scheme != "https" and not local)
+                or url.username is not None or url.password is not None
+                or url.path not in {"", "/"} or url.query or url.fragment
+                or "*" in value or any(char.isspace() for char in value)):
+            raise ValueError("FRONTEND_URL must be one HTTPS origin or a local HTTP origin")
+        # Accessing port also rejects malformed ports before middleware startup.
+        _ = url.port
+        return value.rstrip("/")
 
     @field_validator("jwt_secret_key")
     @classmethod

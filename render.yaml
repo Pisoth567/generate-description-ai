@@ -1,0 +1,58 @@
+# Optional STAGING blueprint. Applying this file creates billable resources.
+# Manual setup and migrations: STAGING_DEPLOYMENT.md. Do not apply automatically.
+services:
+  - type: web
+    name: generate-description-staging-api
+    runtime: python
+    branch: staging
+    rootDir: backend
+    plan: 0.5c-512mb
+    autoDeployTrigger: "off"
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.4
+      - key: APP_ENV
+        value: staging
+      - key: DATABASE_URL
+        fromDatabase:
+          name: generate-description-staging-db
+          property: connectionString
+      - key: FRONTEND_URL
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "30"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        sync: false
+      - key: OPENAI_MAX_OUTPUT_TOKENS
+        value: "600"
+      - key: OPENAI_TIMEOUT_SECONDS
+        value: "30"
+      - key: GENERATION_CREDIT_COST
+        value: "1"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: PAYWAY_ENV
+        value: sandbox
+      - key: PAYWAY_MERCHANT_ID
+        sync: false
+      - key: PAYWAY_API_KEY
+        sync: false
+      - key: PAYWAY_API_URL
+        value: https://checkout-sandbox.payway.com.kh
+      - key: PAYWAY_TIMEOUT_SECONDS
+        value: "15"
+databases:
+  - name: generate-description-staging-db
+    plan: 0.1c-256mb
+    databaseName: generate_description_staging
+    user: generate_description_staging
+    ipAllowList: []
