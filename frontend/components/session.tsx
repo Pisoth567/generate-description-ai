@@ -1,18 +1,21 @@
 "use client";
-import { createContext, useContext, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Sparkles,
   History,
-  CreditCard,
-  Receipt,
   UserRound,
   PanelLeftClose,
   PanelLeftOpen,
   Menu,
   LogOut,
-  Coins,
   ChevronDown,
 } from "lucide-react";
 import type { User } from "@/lib/types";
@@ -20,7 +23,7 @@ import { api } from "@/lib/client";
 import { ErrorMessage } from "./ui";
 import { Brand } from "./brand";
 import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
+import { LanguageControl, ThemeControl, useTranslation } from "./preferences";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -49,9 +52,7 @@ export function useSession() {
 const navigation = [
   { label: "Generate", icon: Sparkles },
   { label: "History", icon: History },
-  { label: "Pricing", icon: CreditCard },
-  { label: "Payments", icon: Receipt },
-  { label: "Account", icon: UserRound },
+  { label: "Profile", icon: UserRound },
 ];
 export function SessionShell({
   initialUser,
@@ -65,6 +66,10 @@ export function SessionShell({
     [busy, setBusy] = useState(false);
   const [collapsed, setCollapsed] = useState(false),
     [open, setOpen] = useState(false);
+  const { t, setLocale } = useTranslation();
+  useEffect(() => {
+    setLocale(initialUser.ui_language || "en");
+  }, [initialUser.ui_language, setLocale]);
   const pathname = usePathname();
   const router = useRouter();
   async function refresh() {
@@ -87,8 +92,8 @@ export function SessionShell({
         key={label}
         href={`/${label.toLowerCase()}`}
         className={`nav-link ${label === "Generate" ? "font-semibold text-primary" : ""}`}
-        aria-label={label}
-        title={collapsed ? label : undefined}
+        aria-label={t(label)}
+        title={collapsed ? t(label) : undefined}
         onClick={() => setOpen(false)}
         aria-current={
           pathname === `/${label.toLowerCase()}` ||
@@ -98,7 +103,7 @@ export function SessionShell({
         }
       >
         <Icon size={19} aria-hidden="true" />
-        <span className="nav-label">{label}</span>
+        <span className="nav-label">{t(label)}</span>
       </Link>
     ));
   }
@@ -111,22 +116,10 @@ export function SessionShell({
       <div className="app-shell">
         <aside
           className={`sidebar ${collapsed ? "collapsed" : ""}`}
-          aria-label="Sidebar"
+          aria-label={t("Sidebar")}
         >
           <Brand href="/generate" />
-          <nav aria-label="Main navigation">{links()}</nav>
-          <div className="sidebar-note">
-            <Sparkles size={18} aria-hidden="true" />
-            <p className="font-semibold">
-              Your next great description starts here.
-            </p>
-            <p className="muted">
-              Write in English or Khmer, in your own tone.
-            </p>
-            <Link href="/generate" className="text-primary font-semibold">
-              Start writing →
-            </Link>
-          </div>
+          <nav aria-label={t("Main navigation")}>{links()}</nav>
         </aside>
         <div className="workspace">
           <header className="workspace-header">
@@ -135,7 +128,9 @@ export function SessionShell({
                 className="hidden lg:inline-flex"
                 variant="ghost"
                 size="icon"
-                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                aria-label={t(
+                  collapsed ? "Expand sidebar" : "Collapse sidebar",
+                )}
                 aria-expanded={!collapsed}
                 onClick={() => setCollapsed(!collapsed)}
               >
@@ -147,17 +142,20 @@ export function SessionShell({
                     className="lg:hidden"
                     variant="ghost"
                     size="icon"
-                    aria-label="Open navigation"
+                    aria-label={t("Open navigation")}
                   >
                     <Menu />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-[min(320px,90vw)] p-5">
+                <SheetContent closeLabel={t("Close navigation")} side="left" className="w-[min(320px,90vw)] p-5">
                   <SheetHeader>
                     <SheetTitle>Generate Description AI</SheetTitle>
-                    <SheetDescription>Your workspace</SheetDescription>
+                    <SheetDescription>{t("Your workspace")}</SheetDescription>
                   </SheetHeader>
-                  <nav className="drawer-nav" aria-label="Mobile navigation">
+                  <nav
+                    className="drawer-nav"
+                    aria-label={t("Mobile navigation")}
+                  >
                     {links()}
                   </nav>
                   <Button
@@ -167,31 +165,29 @@ export function SessionShell({
                     disabled={busy}
                   >
                     <LogOut />
-                    {busy ? "Logging out…" : "Logout"}
+                    {busy ? t("Working…") : t("Logout")}
                   </Button>
                 </SheetContent>
               </Sheet>
               <span className="header-title text-sm text-muted-foreground">
-                Workspace{" "}
+                {t("Workspace")}{" "}
                 <span aria-hidden="true" className="px-2">
                   /
                 </span>
-                <span className="text-foreground">{current}</span>
+                <span className="text-foreground">{t(current)}</span>
               </span>
             </div>
-            <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-              <Link
-                href="/pricing"
-                aria-label={`${user.credits} credits available. Buy credits.`}
-              >
-                <Badge variant="secondary" className="min-h-10 gap-2 px-3">
-                  <Coins size={15} aria-hidden="true" />
-                  {user.credits} credits
-                </Badge>
-              </Link>
+            <div className="flex min-w-0 flex-wrap justify-end items-center gap-2 sm:gap-4">
+              <LanguageControl
+                onLanguage={async (ui_language) => {
+                  await api("/api/auth/preferences", { ui_language });
+                  await refresh();
+                }}
+              />
+              <ThemeControl />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" aria-label="Account menu">
+                  <Button variant="ghost" aria-label={t("Profile menu")}>
                     <span className="grid size-8 place-items-center rounded-full bg-accent font-semibold">
                       {user.email.slice(0, 1).toUpperCase()}
                     </span>
@@ -207,28 +203,22 @@ export function SessionShell({
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/account">
+                    <Link href="/profile">
                       <UserRound />
-                      Account
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/pricing">
-                      <Coins />
-                      Buy credits
+                      {t("Profile")}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem disabled={busy} onSelect={logout}>
                     <LogOut />
-                    {busy ? "Logging out…" : "Logout"}
+                    {busy ? t("Working…") : t("Logout")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </header>
           <main id="main-content" tabIndex={-1} className="workspace-main">
-            <ErrorMessage message={error} />
+            <ErrorMessage message={t(error)} />
             {children}
           </main>
         </div>

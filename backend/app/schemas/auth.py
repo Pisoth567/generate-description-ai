@@ -30,3 +30,12 @@ class GoogleAuthRequest(BaseModel):
 
 class GoogleLinkResponse(BaseModel):
     linked: bool = True
+
+
+class VerificationEmail(BaseModel):
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+    email: EmailStr
+
+
+class VerifyEmailRequest(VerificationEmail):
+    code: str = Field(pattern=r"^[0-9]{6}$", repr=False)

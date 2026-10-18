@@ -1,6 +1,5 @@
-export const metadata = { title: "Buy credits" };
+import { redirect } from "next/navigation";
 export const instant = false;
-import { Pricing } from "@/components/pricing";
 export default function Page() {
-  return <Pricing />;
+  redirect("/generate");
 }

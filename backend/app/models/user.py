@@ -25,6 +25,9 @@ class User(Base):
     def google_linked(self) -> bool:
         return self.google_sub is not None
 
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ui_language: Mapped[str] = mapped_column(String(2), default="en", server_default="en")
+
     plan: Mapped[str] = mapped_column(String, default="free", server_default="free")
     credits: Mapped[int] = mapped_column(Integer, default=10, server_default=text("10"))
     is_active: Mapped[bool] = mapped_column(

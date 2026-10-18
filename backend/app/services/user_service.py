@@ -116,12 +116,8 @@ def update_user(db: Session, user_id: int, update_data: UserUpdate) -> User:
     with database_operation(db):
         user = locked_user(db, user_id)
         changes = update_data.model_dump(exclude_unset=True)
-        if "email" in changes:
-            email = normalize_email(str(changes["email"]))
-            existing = get_user_by_email(db, email)
-            if existing is not None and existing.id != user.id:
-                raise DuplicateEmail()
-            user.email = email
+        if "ui_language" in changes:
+            user.ui_language = changes["ui_language"]
         db.commit()
         db.refresh(user)
         return user

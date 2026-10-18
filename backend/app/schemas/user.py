@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -12,14 +13,7 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    email: EmailStr | None = None
-
-    @field_validator("email")
-    @classmethod
-    def reject_explicit_null(cls, value):
-        if value is None:
-            raise ValueError("Field cannot be null; omit it to leave it unchanged")
-        return value
+    ui_language: Literal["en", "km"]
 
 
 class UserResponse(BaseModel):
@@ -30,6 +24,8 @@ class UserResponse(BaseModel):
     plan: str
     credits: int
     is_active: bool
+    email_verified_at: datetime | None
+    ui_language: Literal["en", "km"]
     google_linked: bool
     created_at: datetime
     updated_at: datetime

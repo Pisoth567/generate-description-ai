@@ -41,22 +41,20 @@
   --ring: #207c69;
   --radius: 0.75rem;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --background: #111a1c;
-    --foreground: #edf3f1;
-    --card: #192427;
-    --primary: #8bd9bf;
-    --primary-foreground: #102921;
-    --muted: #233235;
-    --muted-foreground: #b1c2bf;
-    --accent: #29473e;
-    --destructive: #ffabb3;
-    --border: #36494b;
-    --input: #627c77;
-    --ring: #8bd9bf;
-  }
+.dark {
+  color-scheme: dark;
+  --background: #111a1c;
+  --foreground: #edf3f1;
+  --card: #192427;
+  --primary: #8bd9bf;
+  --primary-foreground: #102921;
+  --muted: #233235;
+  --muted-foreground: #b1c2bf;
+  --accent: #29473e;
+  --destructive: #ffabb3;
+  --border: #36494b;
+  --input: #627c77;
+  --ring: #8bd9bf;
 }
 @layer base {
   * {
@@ -692,4 +690,18 @@
   .checkout-content .actions {
     grid-template-columns: 1fr;
   }
+}
+
+:lang(km) {
+  line-height: 1.9;
+  letter-spacing: normal;
+}
+:lang(km) h1,
+:lang(km) h2,
+:lang(km) h3 {
+  line-height: 1.8;
+  letter-spacing: normal;
+}
+input[type="file"] {
+  max-width: 100%;
 }

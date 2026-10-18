@@ -13,6 +13,7 @@ from app.services.ai_service import close_client
 from app.api.health import router as health_router
 from app.api.users import router as users_router
 from app.core.config import settings
+from app.core.body_limit import BodyLimitMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -28,9 +29,12 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Content-Type", "Authorization"],
 )
+app.add_middleware(BodyLimitMiddleware)
+
 app.include_router(generate_router, prefix="/api")
 app.include_router(generations_router)
-app.include_router(payments_router)
+if settings.PAYMENTS_ENABLED:
+    app.include_router(payments_router)
 app.include_router(health_router)
 app.include_router(users_router)
 app.include_router(auth_router)

@@ -7,6 +7,8 @@ const user = {
   credits: 100,
   is_active: true,
   google_linked: false,
+  email_verified_at: "2026-01-01T00:00:00Z",
+  ui_language: "en",
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
 };
@@ -58,14 +60,31 @@ const qr =
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://127.0.0.1:4311");
-  let raw = "";
-  for await (const chunk of req) raw += chunk;
-  const body = raw ? JSON.parse(raw) : {};
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  const raw = Buffer.concat(chunks);
+  let body = {};
+  if (req.headers["content-type"]?.startsWith("multipart/form-data")) {
+    const form = await new Response(raw, {
+      headers: { "content-type": req.headers["content-type"] },
+    }).formData();
+    body = Object.fromEntries(form);
+  } else body = raw.length ? JSON.parse(raw.toString("utf8")) : {};
   const send = (data, status = 200) => {
     res.writeHead(status, { "Content-Type": "application/json" });
     res.end(JSON.stringify(data));
   };
   if (url.pathname === "/health") return send({ ok: true });
+  if (
+    url.pathname === "/api/auth/verify-email" ||
+    url.pathname === "/api/auth/resend-verification"
+  )
+    return send({ ok: true });
+  if (
+    url.pathname === "/api/auth/login" &&
+    body.email === "unverified@example.test"
+  )
+    return send({ detail: { code: "email_verification_required" } }, 403);
   if (url.pathname === "/api/auth/login")
     return send({
       access_token: "local-test-session-never-render",
@@ -73,6 +92,10 @@ const server = http.createServer(async (req, res) => {
     });
   if (url.pathname === "/api/auth/register") return send(user, 201);
   if (!req.headers.authorization) return send({}, 401);
+  if (url.pathname === "/api/auth/preferences") {
+    user.ui_language = body.ui_language;
+    return send(user);
+  }
   if (url.pathname === "/api/auth/me") return send(user);
   if (url.pathname === "/api/generations")
     return send(
@@ -93,8 +116,6 @@ const server = http.createServer(async (req, res) => {
       language: body.language,
       tone: body.tone,
       tokens_used: 84,
-      credits_used: 1,
-      credits_remaining: 99,
     });
   if (url.pathname === "/api/payments/packages") return send(packages);
   if (url.pathname === "/api/payments" && req.method === "POST")

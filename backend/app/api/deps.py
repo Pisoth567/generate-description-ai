@@ -53,6 +53,8 @@ def get_current_user(
         raise unauthorized() from None
     if not user.is_active:
         raise HTTPException(403, "Account is inactive")
+    if user.email_verified_at is None:
+        raise HTTPException(403, {"code": "email_verification_required"})
     return user
 
 

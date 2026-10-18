@@ -1,5 +1,6 @@
 """Google identity verification and explicit, non-merging account linking."""
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from hmac import compare_digest
 import time
 
@@ -86,7 +87,7 @@ def authenticate_google_user(db: Session, identity: GoogleIdentity) -> User:
         if existing is not None:
             _email_conflict(existing)
         user = User(email=identity.email, google_sub=identity.sub, password_hash=None,
-                    plan="free", credits=10, is_active=True)
+                    plan="free", credits=10, is_active=True, email_verified_at=datetime.now(timezone.utc))
         db.add(user)
         try:
             db.commit()

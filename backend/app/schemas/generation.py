@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
 NonEmptyString = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 ProductName = Annotated[NonEmptyString, StringConstraints(max_length=200)]
@@ -21,7 +21,14 @@ class GenerationRequest(BaseModel):
 
     product_name: ProductName
     category: Category | None = None
-    features: list[Feature] = Field(max_length=20)
+    features: Annotated[list[Feature], Field(max_length=20)] | Annotated[str, StringConstraints(min_length=1, max_length=6000)]
+    @field_validator("features")
+    @classmethod
+    def require_details(cls, value):
+        if isinstance(value, str) and not value.strip():
+            raise ValueError("Product details cannot be blank")
+        return value
+
     tone: Style = "professional"
     language: GenerationLanguage = GenerationLanguage.ENGLISH
 
@@ -32,8 +39,6 @@ class GenerationResponse(BaseModel):
     tone: str
     language: str
     tokens_used: int
-    credits_used: int
-    credits_remaining: int
 
 
 class GenerationHistoryResponse(BaseModel):

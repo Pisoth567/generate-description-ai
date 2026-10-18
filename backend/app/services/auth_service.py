@@ -1,4 +1,6 @@
 from sqlalchemy.orm import Session
+from fastapi import HTTPException
+from app.services import verification_service
 
 from app.core.security import (
     create_access_token, hash_password, verify_dummy_password, verify_password,
@@ -26,6 +28,8 @@ def register_user(db: Session, data: RegisterRequest) -> User:
             plan="free", credits=10, is_active=True,
         )
         db.add(user)
+        db.flush()
+        verification_service.issue(db, user)
         db.commit()
         db.refresh(user)
         return user
@@ -40,6 +44,8 @@ def authenticate_user(db: Session, email: str, password: str) -> User:
         raise InvalidCredentials()
     if not user.is_active:
         raise InactiveAccount()
+    if user.email_verified_at is None:
+        raise HTTPException(403, {"code": "email_verification_required"})
     return user
 
 

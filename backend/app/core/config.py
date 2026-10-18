@@ -14,6 +14,13 @@ class Settings(BaseSettings):
         hide_input_in_errors=True,
     )
 
+    PAYMENTS_ENABLED: bool = False
+    EMAIL_PROVIDER: str = ""
+    EMAIL_FROM: str = ""
+    EMAIL_VERIFICATION_SECRET: SecretStr | None = Field(default=None, repr=False)
+    EMAIL_API_KEY: SecretStr | None = Field(default=None, repr=False)
+    GENERATION_RATE_LIMIT_PER_MINUTE: int = Field(default=5, gt=0)
+    GENERATION_RATE_LIMIT_PER_DAY: int = Field(default=50, gt=0)
     APP_NAME: str = "Generate Description AI API"
     APP_ENV: str = "development"
     GOOGLE_CLIENT_ID: str = ""

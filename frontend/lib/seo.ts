@@ -19,7 +19,7 @@ export function siteOrigin(): string | undefined {
   }
 }
 export const productDescription =
-  "Create AI-powered product descriptions for e-commerce in English and Khmer. Choose your tone, save your work, and manage your credits in one workspace.";
+  "Upload a product image, add product details, and generate natural product descriptions in English or Khmer. Free to use, with saved history.";
 export function publicMetadata(
   title: string,
   path: string,

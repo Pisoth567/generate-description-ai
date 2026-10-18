@@ -18,6 +18,10 @@ function load(file, dependencies) {
     exports,
     URL,
     Number,
+    Uint8Array,
+    TextDecoder,
+    Response,
+    FormData,
     process: { env: {} },
     require: (name) => {
       if (!(name in dependencies))

@@ -72,10 +72,15 @@ class CreditServiceTests(unittest.TestCase):
 
 
 class TransactionFailureTests(unittest.TestCase):
+    def setUp(self):
+        boundary = patch('app.services.verification_service.issue')
+        boundary.start()
+        self.addCleanup(boundary.stop)
+
     def test_writes_rollback_and_hide_database_errors(self):
         actions = (
             lambda db: user_service.create_user(db, UserCreate(email='failure@example.com')),
-            lambda db: user_service.update_user(db, 1, UserUpdate(email='changed@example.com')),
+            lambda db: user_service.update_user(db, 1, UserUpdate(ui_language='km')),
             lambda db: user_service.deactivate_user(db, 1),
             lambda db: user_service.adjust_user_credits(db, 1, -1),
             lambda db: auth_service.register_user(db, RegisterRequest(
@@ -116,3 +121,8 @@ class TransactionFailureTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+def tearDownModule():
+    from app.db.database import engine
+    engine.dispose()

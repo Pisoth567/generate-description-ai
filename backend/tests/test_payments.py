@@ -1,3 +1,4 @@
+from helpers import verified_registration
 """Migrated PostgreSQL integration tests; all PayWay network calls are mocked.
 
 Callback key resolution is patched with an ephemeral test key. Production
@@ -25,7 +26,14 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import Settings, settings
 from app.db.database import SessionLocal, engine
-from app.main import app
+from fastapi import FastAPI
+from app.main import app as active_app
+from app.api.payments import router as legacy_payments_router
+# Explicit isolated legacy test app; active product keeps payments disabled.
+app = FastAPI()
+app.router.routes.extend(active_app.router.routes)
+app.include_router(legacy_payments_router)
+app.exception_handlers.update(active_app.exception_handlers)
 from app.models.payment import Payment
 from app.models.user import User
 from app.services import payment_service, payway_service, user_service
@@ -87,7 +95,7 @@ class PaymentAPITests(unittest.TestCase):
 
     def register(self):
         credentials = {"email": f"payment-{uuid4().hex}@example.com", "password": secrets.token_urlsafe(24)}
-        response = self.client.post("/api/auth/register", json=credentials)
+        response = verified_registration(self.client, credentials)
         self.assertEqual(response.status_code, 201)
         user = response.json()
         self.created.append(user["id"])

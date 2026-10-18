@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import Image from "next/image";
+import logo from "../app/no background.png";
 export function Brand({ href = "/" }: { href?: string }) {
   return (
     <Link
@@ -7,8 +8,8 @@ export function Brand({ href = "/" }: { href?: string }) {
       className="brand"
       aria-label="Generate Description AI home"
     >
-      <span className="brand-mark">
-        <Sparkles size={20} aria-hidden="true" />
+      <span className="w-15">
+        <Image src={logo} alt="" loading="eager" />
       </span>
       <span className="brand-name">
         Generate

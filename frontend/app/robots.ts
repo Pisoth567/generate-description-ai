@@ -14,6 +14,8 @@ export default function robots(): MetadataRoute.Robots {
         "/pricing",
         "/payments",
         "/account",
+        "/profile",
+        "/verify-email",
       ],
     },
     ...(origin ? { sitemap: `${origin}/sitemap.xml` } : {}),

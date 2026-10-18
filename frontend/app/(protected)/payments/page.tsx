@@ -1,6 +1,5 @@
-export const metadata = { title: "Payment history" };
+import { redirect } from "next/navigation";
 export const instant = false;
-import { Payments } from "@/components/payments";
 export default function Page() {
-  return <Payments />;
+  redirect("/generate");
 }

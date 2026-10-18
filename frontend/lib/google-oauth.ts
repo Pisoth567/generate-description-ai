@@ -40,7 +40,7 @@ export async function startGoogle(request: Request) {
   if (mode !== "login" && mode !== "link") return clear(redirect(request, "/login?error=google_failed"));
   let settings: ReturnType<typeof config>;
   try { settings = config(); }
-  catch { return clear(redirect(request, mode === "link" ? "/account?error=google_unavailable" : "/login?error=google_unavailable")); }
+  catch { return clear(redirect(request, mode === "link" ? "/profile?error=google_unavailable" : "/login?error=google_unavailable")); }
   const jar = await cookies();
   const token = jar.get("access_token")?.value;
   if (mode === "link") {
@@ -67,7 +67,7 @@ export async function callbackGoogle(request: Request) {
   const read = (name: string) => jar.get(cookieName(name))?.value;
   const mode = read("mode");
   let origin: string | undefined;
-  const failed = () => clear(redirect(request, mode === "link" ? "/account?error=google_failed" : "/login?error=google_failed", origin));
+  const failed = () => clear(redirect(request, mode === "link" ? "/profile?error=google_failed" : "/login?error=google_failed", origin));
   try {
     const settings = config();
     origin = settings.origin;
@@ -92,7 +92,7 @@ export async function callbackGoogle(request: Request) {
     if (mode === "link") {
       const linked = await backend<{ linked: boolean }>("/api/auth/google/link", token, body);
       if (linked.linked !== true) return failed();
-      return clear(redirect(request, "/account?google=linked", origin));
+      return clear(redirect(request, "/profile?google=linked", origin));
     }
     const login = await backend<{ access_token: string; expires_in: number }>("/api/auth/google", undefined, body);
     if (typeof login.access_token !== "string" || !login.access_token || !Number.isInteger(login.expires_in) || login.expires_in <= 0) return failed();
@@ -104,7 +104,7 @@ export async function callbackGoogle(request: Request) {
     if (mode === "login" && error instanceof BackendError && error.status === 409)
       return clear(redirect(request, "/login?error=google_link_required", origin));
     if (!origin || (error instanceof BackendError && error.status === 503))
-      return clear(redirect(request, mode === "link" ? "/account?error=google_unavailable" : "/login?error=google_unavailable", origin));
+      return clear(redirect(request, mode === "link" ? "/profile?error=google_unavailable" : "/login?error=google_unavailable", origin));
     return failed();
   }
 }

@@ -1,4 +1,5 @@
 """Real PostgreSQL; Google's cryptographic verification boundary is always mocked."""
+from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 import time
@@ -45,7 +46,7 @@ class GoogleAuthTests(unittest.TestCase):
 
     def local(self, email=None, **values):
         with SessionLocal() as db:
-            user = User(email=email or self.email, **values)
+            user = User(email=email or self.email, email_verified_at=datetime.now(timezone.utc), **values)
             db.add(user)
             db.commit()
             db.refresh(user)

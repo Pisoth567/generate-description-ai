@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Check, Copy, AlertCircle, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "./preferences";
 import { Button } from "./ui/button";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Skeleton } from "./ui/skeleton";
@@ -14,22 +15,30 @@ export function ErrorMessage({ message }: { message: string }) {
   ) : null;
 }
 export function CopyButton({ text }: { text: string }) {
+  const { t } = useTranslation();
   const [message, setMessage] = useState("");
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Button
         type="button"
         variant="outline"
+        size="icon"
+        aria-label={t("Copy description")}
+        title={t("Copy description")}
         onClick={async () => {
           try {
             await navigator.clipboard.writeText(text);
             setMessage("Copied to clipboard.");
-            toast.success("Description copied");
+            toast.success("Description copied to clipboard.");
+            clearTimeout(timer.current);
+            timer.current = setTimeout(() => setMessage(""), 2000);
           } catch {
             setMessage(
               "Copy unavailable. Select the description and copy it manually.",
             );
-            toast.error("Copy unavailable");
+            toast.error(t("Copy unavailable"));
           }
         }}
       >
@@ -38,18 +47,18 @@ export function CopyButton({ text }: { text: string }) {
         ) : (
           <Copy aria-hidden="true" />
         )}
-        Copy Description
       </Button>
       <span className="text-sm text-muted-foreground" role="status">
-        {message}
+        {t(message)}
       </span>
     </div>
   );
 }
 export function LoadingCards({ label = "Loading…" }: { label?: string }) {
+  const { t } = useTranslation();
   return (
-    <div role="status" aria-label={label} className="card-grid">
-      <span className="sr-only">{label}</span>
+    <div role="status" aria-label={t(label)} className="card-grid">
+      <span className="sr-only">{t(label)}</span>
       {[0, 1, 2].map((i) => (
         <div className="card space-y-4" key={i} aria-hidden="true">
           <Skeleton className="h-5 w-1/2" />
@@ -79,9 +88,9 @@ export function EmptyState({
     </div>
   );
 }
-export function date(value: string) {
+export function date(value: string, locale = "en") {
   return (
-    new Intl.DateTimeFormat("en", {
+    new Intl.DateTimeFormat(locale, {
       dateStyle: "medium",
       timeStyle: "short",
       timeZone: "UTC",

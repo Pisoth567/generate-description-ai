@@ -1,3 +1,4 @@
+from helpers import verified_registration
 """Real migrated PostgreSQL + real app/auth; AI calls are always mocked."""
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -47,7 +48,7 @@ class GenerationAPITests(unittest.TestCase):
 
     def register(self):
         credentials = {'email': f'generation-{uuid4().hex}@example.com', 'password': 'test-only-password-123'}
-        response = self.client.post('/api/auth/register', json=credentials)
+        response = verified_registration(self.client, credentials)
         self.assertEqual(response.status_code, 201)
         user = response.json()
         self.created.append(user['id'])
@@ -76,9 +77,8 @@ class GenerationAPITests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertEqual(body, {'generation_id': body['generation_id'], 'description': RESULT.description,
-            'tone': 'professional', 'language': 'English', 'tokens_used': 123,
-            'credits_used': 1, 'credits_remaining': 9})
-        row = self.assert_state(9, 1)[0]
+            'tone': 'professional', 'language': 'English', 'tokens_used': 123})
+        row = self.assert_state(10, 1)[0]
         self.assertEqual((row.id, row.tokens_used, row.generated_text),
                          (body['generation_id'], 123, RESULT.description))
         self.assertEqual((row.product_name, row.category, row.user_id), ('Headphones', 'Audio', self.user['id']))
@@ -98,17 +98,17 @@ class GenerationAPITests(unittest.TestCase):
                 self.assertEqual(detail.json()['generated_text'], description)
                 history = self.client.get('/api/generations', headers=self.headers)
                 self.assertEqual(history.json()[0]['generated_text'], description)
-        self.assert_state(8, 2)
+        self.assert_state(10, 2)
 
-    def test_auth_and_insufficient(self):
+    def test_auth_and_zero_legacy_credits(self):
         for headers in ({}, {'Authorization': 'Bearer invalid'}):
             self.assertEqual(self.generate(headers=headers).status_code, 401)
         self.assert_state(10, 0)
         self.balance(0)
         response = self.generate()
-        self.assertEqual((response.status_code, response.json()), (402, {'detail': 'Insufficient credits'}))
-        self.ai.assert_not_called()
-        self.assert_state(0, 0)
+        self.assertEqual(response.status_code, 200)
+        self.ai.assert_awaited_once()
+        self.assert_state(0, 1)
 
     def assert_language_generation(self, language, product_name, omit_language=False):
         payload = {'product_name': product_name, 'features': ['Bluetooth 5.3']}
@@ -119,7 +119,7 @@ class GenerationAPITests(unittest.TestCase):
         self.assertEqual(response.json()['language'], language)
         self.ai.assert_awaited_once()
         self.assertIs(self.ai.await_args.args[0].language, GenerationLanguage(language))
-        row = self.assert_state(9, 1)[0]
+        row = self.assert_state(10, 1)[0]
         self.assertIs(type(row.language), str)
         self.assertEqual(row.language, language)
         history = self.client.get('/api/generations', headers=self.headers)
@@ -159,7 +159,7 @@ class GenerationAPITests(unittest.TestCase):
         self.assertEqual(self.generate().status_code, 503)
         self.assert_state(10, 0)
 
-    def test_insert_failure_rolls_back_actual_update(self):
+    def test_insert_failure_leaves_no_partial_history(self):
         updates = []
         def break_insert(conn, cursor, statement, parameters, context, executemany):
             if statement.startswith('UPDATE users'):
@@ -172,12 +172,12 @@ class GenerationAPITests(unittest.TestCase):
             response = self.generate()
         finally:
             event.remove(engine, 'before_cursor_execute', break_insert)
-        self.assertTrue(updates)
+        self.assertFalse(updates)
         self.assertEqual((response.status_code, response.json()),
                          (500, {'detail': 'Database operation failed'}))
         self.assert_state(10, 0)
 
-    def test_concurrent_last_credit(self):
+    def test_concurrent_free_generations(self):
         self.balance(1)
         barrier = Barrier(2)
         async def concurrent_ai(request):
@@ -187,9 +187,9 @@ class GenerationAPITests(unittest.TestCase):
         with ThreadPoolExecutor(max_workers=2) as pool:
             futures = [pool.submit(self.generate) for _ in range(2)]
             responses = [future.result(timeout=20) for future in futures]
-        self.assertCountEqual([r.status_code for r in responses], [200, 402])
+        self.assertCountEqual([r.status_code for r in responses], [200, 200])
         self.assertEqual(self.ai.await_count, 2)
-        self.assert_state(0, 1)
+        self.assert_state(1, 2)
 
     def test_deactivation_during_ai_and_no_open_transaction(self):
         # A separate transaction can lock/deactivate the user during the AI call.
@@ -232,13 +232,13 @@ class GenerationAPITests(unittest.TestCase):
         self.ai.assert_not_called()
         self.assert_state(10, 0)
 
-    def test_configured_cost(self):
+    def test_legacy_cost_configuration_ignored(self):
         with patch.object(settings, 'generation_credit_cost', 2):
             response = self.generate()
         self.assertEqual(response.status_code, 200)
         self.ai.assert_awaited_once()
-        self.assertEqual(response.json()['credits_used'], 2)
-        self.assert_state(8, 1)
+        self.assertNotIn('credits_used', response.json())
+        self.assert_state(10, 1)
 
 
 class AIServiceTests(unittest.IsolatedAsyncioTestCase):
@@ -344,14 +344,9 @@ class GenerationDocumentationTests(unittest.TestCase):
             response = client.get('/openapi.json')
             self.assertEqual(response.status_code, 200)
             spec = response.json()
-            schemas = spec['components']['schemas']
-            language = schemas['GenerationRequest']['properties']['language']
-            self.assertEqual(language['default'], 'English')
-            enum = schemas[language['$ref'].rsplit('/', 1)[1]]
-            self.assertEqual(enum['type'], 'string')
-            self.assertEqual(enum['enum'], ['English', 'Khmer'])
-            self.assertEqual(spec['paths']['/api/generate']['post']['requestBody']['content']
-                             ['application/json']['schema']['$ref'], '#/components/schemas/GenerationRequest')
+            schema = spec['paths']['/api/generate']['post']['requestBody']['content']['application/json']['schema']
+            self.assertEqual(schema['properties']['language']['default'], 'English')
+            self.assertEqual(schema['properties']['language']['enum'], ['English', 'Khmer'])
             self.assertEqual(client.get('/docs').status_code, 200)
 
     def test_health_endpoints(self):

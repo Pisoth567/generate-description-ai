@@ -55,6 +55,7 @@ function SheetClose(props: SheetCloseProps) {
 
 type SheetContentProps = SheetContentPrimitiveProps & {
   showCloseButton?: boolean;
+  closeLabel?: string;
 };
 
 function SheetContent({
@@ -62,6 +63,7 @@ function SheetContent({
   children,
   side = "right",
   showCloseButton = true,
+  closeLabel = "Close",
   ...props
 }: SheetContentProps) {
   return (
@@ -83,7 +85,7 @@ function SheetContent({
         {showCloseButton && (
           <SheetClose className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-2 right-2 grid size-11 place-items-center rounded-md opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
             <XIcon className="size-4" />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{closeLabel}</span>
           </SheetClose>
         )}
       </SheetContentPrimitive>

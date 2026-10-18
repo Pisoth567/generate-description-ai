@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Notifications } from "@/components/notifications";
 import { productDescription, siteOrigin } from "@/lib/seo";
 import "./globals.css";
+import { PreferencesProvider, SkipLink } from "@/components/preferences";
 const origin = siteOrigin();
 export const metadata: Metadata = {
   ...(origin ? { metadataBase: new URL(origin) } : {}),
@@ -17,13 +18,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
-        <a href="#main-content" className="skip-link">
-          Skip to content
-        </a>
-        {children}
-        <Notifications />
+        <PreferencesProvider>
+          <SkipLink />
+          {children}
+          <Notifications />
+        </PreferencesProvider>
       </body>
     </html>
   );

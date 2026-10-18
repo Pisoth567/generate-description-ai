@@ -1,10 +1,4 @@
-"""HTTP integration tests against local uvicorn and migrated PostgreSQL.
-
-Start: .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8765
-Run:   .venv/bin/python -m unittest discover -s tests -v
-Override the server with TEST_API_URL. Only new test accounts are modified.
-Tokens, passwords and hashes are never printed by these tests.
-"""
+"""In-process HTTP authentication tests with mocked email delivery and PostgreSQL."""
 from datetime import datetime, timedelta, timezone
 import json
 import os
@@ -23,23 +17,22 @@ from app.models.user import User
 from app.schemas.user import UserCreate
 from app.services import user_service
 
-BASE_URL = os.environ.get('TEST_API_URL', 'http://127.0.0.1:8765')
+from fastapi.testclient import TestClient
+from unittest.mock import patch
+from app.main import app
+from app.services import email_service
+from helpers import verified_registration
 
+client = TestClient(app)
 
 def request(method, path, data=None, token=None, headers=None):
     request_headers = {'Content-Type': 'application/json', **(headers or {})}
     if token is not None:
         request_headers['Authorization'] = 'Bearer ' + token
-    body = None if data is None else json.dumps(data).encode()
-    req = Request(BASE_URL + path, data=body, method=method, headers=request_headers)
-    try:
-        response = urlopen(req, timeout=15)
-    except HTTPError as exc:
-        response = exc
-    with response:
-        raw = response.read().decode()
-        result = json.loads(raw) if 'application/json' in response.headers.get('Content-Type', '') else raw
-        return response.status, result, response.headers
+    with patch.object(email_service, 'send_verification'):
+        response = client.request(method, path, json=data, headers=request_headers)
+    result = response.json() if 'application/json' in response.headers.get('Content-Type', '') else response.text
+    return response.status_code, result, response.headers
 
 
 class AuthAPITests(unittest.TestCase):
@@ -57,7 +50,8 @@ class AuthAPITests(unittest.TestCase):
                 user_service.deactivate_user(db, user_id)
 
     def register(self, email, password):
-        code, body, _ = request('POST', '/api/auth/register', {'email': email, 'password': password})
+        response = verified_registration(client, {'email': email, 'password': password})
+        code, body = response.status_code, response.json()
         self.assertEqual(code, 201)
         self.created.append(body['id'])
         self.assertNotIn('password_hash', body)
@@ -93,7 +87,8 @@ class AuthAPITests(unittest.TestCase):
         normalized_token = self.login(self.email.upper(), self.password)
         code, body, _ = request('GET', '/api/auth/me', token=normalized_token)
         self.assertEqual(code, 200)
-        self.assertEqual(body, self.user)
+        self.assertEqual(body['id'], self.user['id'])
+        self.assertIsNotNone(body['email_verified_at'])
         claims = jwt.decode(self.token, settings.jwt_secret_key.get_secret_value(),
                             algorithms=[settings.jwt_algorithm])
         self.assertEqual(set(claims), {'sub', 'iat', 'exp', 'type'})
@@ -155,16 +150,14 @@ class AuthAPITests(unittest.TestCase):
         own_path = f'/api/users/{self.user["id"]}'
         other_path = f'/api/users/{other["id"]}'
         self.assertEqual(request('GET', own_path, token=self.token)[0], 200)
-        for method, data in (('GET', None), ('PATCH', {'email': self.email}), ('DELETE', None)):
+        for method, data in (('GET', None), ('PATCH', {'ui_language': 'km'}), ('DELETE', None)):
             self.assert_unauthorized(request(method, own_path, data))
             self.assertEqual(request(method, other_path, data, token=self.token)[0], 403)
-        self.assertEqual(request('PATCH', own_path, {'email': other['email']}, token=self.token)[0], 409)
-        new_email = f'updated-{uuid4().hex}@example.com'
-        code, body, _ = request('PATCH', own_path, {'email': new_email}, token=self.token)
+        self.assertEqual(request('PATCH', own_path, {'email': other['email']}, token=self.token)[0], 422)
+        code, body, _ = request('PATCH', own_path, {'ui_language': 'km'}, token=self.token)
         self.assertEqual(code, 200)
-        self.assertEqual(body['email'], new_email)
-        self.assertNotIn('password_hash', body)
-        self.login(new_email, self.password)
+        self.assertEqual(body['ui_language'], 'km')
+        new_email = self.email
         code, body, _ = request('DELETE', own_path, token=self.token)
         self.assertEqual(code, 200)
         self.assertFalse(body['is_active'])
@@ -230,3 +223,7 @@ class AuthAPITests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+def tearDownModule():
+    client.close()

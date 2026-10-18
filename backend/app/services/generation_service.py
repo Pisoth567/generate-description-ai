@@ -8,14 +8,10 @@ from app.services.auth_service import InactiveAccount
 from app.services.user_service import database_operation, locked_user
 
 
-class InsufficientCredits(Exception):
-    pass
-
-
 def finalize_generation(
-    db: Session, user_id: int, request: GenerationRequest, result: AIResult, cost: int,
+    db: Session, user_id: int, request: GenerationRequest, result: AIResult,
 ) -> GenerationResponse:
-    """Own a short transaction after AI completes; commit charge and insert once."""
+    """Own a short transaction after AI completes; commit the history insert once."""
     if not result.description.strip():
         raise AIUnavailable()
     with database_operation(db):
@@ -23,9 +19,6 @@ def finalize_generation(
             user = locked_user(db, user_id)
             if not user.is_active:
                 raise InactiveAccount()
-            if user.credits < cost:
-                raise InsufficientCredits()
-            user.credits -= cost
             generation = Generation(
                 user_id=user_id, product_name=request.product_name,
                 category=request.category, generated_text=result.description,
@@ -37,8 +30,7 @@ def finalize_generation(
             response = GenerationResponse(
                 generation_id=generation.id, description=generation.generated_text,
                 tone=generation.tone, language=generation.language,
-                tokens_used=generation.tokens_used, credits_used=cost,
-                credits_remaining=user.credits,
+                tokens_used=generation.tokens_used,
             )
         return response
 
