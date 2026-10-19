@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { backend, BackendError } from "./backend";
 import { cookieOptions } from "./session";
-import type { PaymentCheckoutResponse, User } from "./types";
+import type { User } from "./types";
 function json(data: unknown, status = 200) {
   return NextResponse.json(data, {
     status,
@@ -17,8 +17,6 @@ function safeUser(user: User): User {
   return {
     id: user.id,
     email: user.email,
-    plan: user.plan,
-    credits: user.credits,
     is_active: user.is_active,
     google_linked: user.google_linked === true,
     email_verified_at: user.email_verified_at,
@@ -49,7 +47,6 @@ export async function proxy(request: Request, path: string) {
         throw new BackendError(403);
       if (path === "/api/auth/logout") {
         jar.set("access_token", "", { ...cookieOptions, maxAge: 0 });
-        jar.set("pending_payment", "", { ...cookieOptions, maxAge: 0 });
         return json({ ok: true });
       }
     }
@@ -62,46 +59,16 @@ export async function proxy(request: Request, path: string) {
     if (!publicRoute && !token) throw new BackendError(401);
     let body: unknown;
     if (request.method === "POST") {
-      if (path.endsWith("/verify")) body = {};
-      else {
-        const bytes = await limitedBody(
-          request,
-          path === "/api/generate" ? 6 * 1024 * 1024 : 65536,
-        );
-        if (
-          path === "/api/generate" &&
-          request.headers.get("content-type")?.startsWith("multipart/form-data")
-        ) {
-          try {
-            body = await new Response(bytes, {
-              headers: { "Content-Type": request.headers.get("content-type")! },
-            }).formData();
-          } catch {
-            throw new BackendError(400);
-          }
-        } else {
-          if (
-            !request.headers.get("content-type")?.startsWith("application/json")
-          )
-            throw new BackendError(400);
-          try {
-            body = JSON.parse(new TextDecoder().decode(bytes));
-          } catch {
-            throw new BackendError(400);
-          }
-        }
-        if (!body || typeof body !== "object" || Array.isArray(body))
-          throw new BackendError(422);
-        if (path === "/api/payments") {
-          const value = body as Record<string, unknown>;
-          if (
-            Object.keys(value).length !== 1 ||
-            typeof value.package_code !== "string"
-          )
-            throw new BackendError(422);
-          body = { package_code: value.package_code };
-        }
+      const bytes = await limitedBody(request, 65536);
+      if (!request.headers.get("content-type")?.startsWith("application/json"))
+        throw new BackendError(400);
+      try {
+        body = JSON.parse(new TextDecoder().decode(bytes));
+      } catch {
+        throw new BackendError(400);
       }
+      if (!body || typeof body !== "object" || Array.isArray(body))
+        throw new BackendError(422);
     }
     if (path === "/api/auth/login") {
       const result = await backend<{
@@ -118,14 +85,10 @@ export async function proxy(request: Request, path: string) {
         ...cookieOptions,
         maxAge: result.expires_in,
       });
-      jar.set("pending_payment", "", { ...cookieOptions, maxAge: 0 });
       return json({ ok: true });
     }
     let target = path;
-    if (
-      request.method === "GET" &&
-      (path === "/api/generations" || path === "/api/payments")
-    ) {
+    if (request.method === "GET" && path === "/api/generations") {
       const params = new URL(request.url).searchParams;
       const skip = params.get("skip") ?? "0",
         limit = params.get("limit") ?? "20";
@@ -149,20 +112,6 @@ export async function proxy(request: Request, path: string) {
         safeUser(data as User),
         path.endsWith("register") ? 201 : 200,
       );
-    if (path === "/api/payments" && request.method === "POST") {
-      const checkout = data as PaymentCheckoutResponse;
-      if (
-        checkout.checkout?.type !== "aba_qr" ||
-        !Number.isSafeInteger(checkout.payment?.id) ||
-        checkout.payment.id <= 0
-      )
-        throw new BackendError(502, path);
-      jar.set("pending_payment", String(checkout.payment.id), {
-        ...cookieOptions,
-        maxAge: 86400,
-      });
-      return json(checkout, 201);
-    }
     return json(data);
   } catch (error) {
     const failure =

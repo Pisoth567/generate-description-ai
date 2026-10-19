@@ -30,8 +30,6 @@ def user_database(db: Annotated[Session, Depends(get_db)]) -> Iterator[Session]:
             code = 404
         elif isinstance(exc, user_service.DuplicateEmail):
             code = 409
-        elif isinstance(exc, user_service.InvalidCreditAdjustment):
-            code = 400
         else:
             code = 500
         raise HTTPException(code, str(exc)) from None

@@ -114,20 +114,11 @@ export const khmer = {
     "សូមផ្ទៀងផ្ទាត់អ៊ីមែលមុនចូលគណនី។",
   "Invalid or expired code. Request a new code if needed.":
     "លេខកូដមិនត្រឹមត្រូវ ឬផុតកំណត់។ សូមស្នើលេខកូដថ្មីប្រសិនបើចាំបាច់។",
-  "Email delivery is not configured. Please try again later.":
-    "ការផ្ញើអ៊ីមែលមិនទាន់បានកំណត់។ សូមព្យាយាមម្ដងទៀតពេលក្រោយ។",
   "Something went wrong. Please try again later.":
     "មានបញ្ហាកើតឡើង។ សូមព្យាយាមម្ដងទៀតពេលក្រោយ។",
   "Please check your email and password.": "សូមពិនិត្យអ៊ីមែល និងពាក្យសម្ងាត់។",
   "Passwords must match.": "ពាក្យសម្ងាត់ត្រូវតែដូចគ្នា។",
   "Working…": "កំពុងដំណើរការ…",
-  "Product Image (optional)": "រូបភាពផលិតផល (មិនចាំបាច់)",
-  "JPG / PNG / WebP · up to 5 MiB. Images are not saved.":
-    "JPG / PNG / WebP · រហូតដល់ 5 MiB។ រូបភាពមិនត្រូវបានរក្សាទុកទេ។",
-  "Choose a valid JPG, PNG, or WebP image under 5 MiB.":
-    "សូមជ្រើសរូបភាព JPG, PNG ឬ WebP ត្រឹមត្រូវ ដែលតូចជាង 5 MiB។",
-  "Product image preview": "មើលរូបភាពផលិតផល",
-  "Remove image": "លុបរូបភាព",
   "Product Name": "ឈ្មោះផលិតផល",
   Category: "ប្រភេទ",
   "Search or enter a category": "ស្វែងរក ឬបញ្ចូលប្រភេទ",
@@ -163,12 +154,15 @@ export const khmer = {
   Dark: "ងងឹត",
   System: "តាមប្រព័ន្ធ",
   "AI Product Description Generator": "កម្មវិធីបង្កើតការពិពណ៌នាផលិតផលដោយ AI",
-  "Upload a product image, add product details, and generate natural product descriptions in English or Khmer.":
-    "បញ្ចូលរូបភាព និងព័ត៌មានផលិតផល ដើម្បីបង្កើតការពិពណ៌នាធម្មជាតិជាភាសាអង់គ្លេស ឬខ្មែរ។",
-  "Image-aware AI": "AI យល់ដឹងពីរូបភាព",
+  "Generate natural product descriptions from your product information in English or Khmer.":
+    "បង្កើតការពិពណ៌នាផលិតផលបែបធម្មជាតិពីព័ត៌មានផលិតផលរបស់អ្នក ជាភាសាអង់គ្លេស ឬខ្មែរ។",
+  "Fast text-based generation": "បង្កើតអត្ថបទបានរហ័ស",
   "English + Khmer output": "អត្ថបទជាភាសាអង់គ្លេស និងខ្មែរ",
   "Generation history": "ប្រវត្តិការបង្កើត",
   "Verified sign-in": "ការចូលដោយអ៊ីមែលដែលបានផ្ទៀងផ្ទាត់",
+  "Custom product categories": "ប្រភេទផលិតផលផ្ទាល់ខ្លួន",
+  "Email delivery is unavailable. Please try again later.":
+    "មិនអាចផ្ញើអ៊ីមែលបានទេ។ សូមព្យាយាមម្តងទៀតនៅពេលក្រោយ។",
   "Free to use": "ប្រើប្រាស់ឥតគិតថ្លៃ",
   "Search this page": "ស្វែងរកក្នុងទំព័រនេះ",
   Language: "ភាសា",
@@ -183,8 +177,6 @@ export const khmer = {
   "Loading descriptions…": "កំពុងផ្ទុកការពិពណ៌នា…",
   "You've generated several descriptions recently. Please wait a little and try again.":
     "អ្នកបានបង្កើតការពិពណ៌នាជាច្រើនថ្មីៗនេះ។ សូមរង់ចាំបន្តិច រួចព្យាយាមម្ដងទៀត។",
-  "The image could not be processed by the configured AI model.":
-    "ម៉ូដែល AI មិនអាចដំណើរការរូបភាពនេះបានទេ។",
 } as const;
 export type Message = keyof typeof khmer;
 export function translate(locale: "en" | "km", message: string): string {

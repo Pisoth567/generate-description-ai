@@ -1,13 +1,11 @@
 """Phase 1 tests: real isolated PostgreSQL, mocked external boundaries."""
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
-from io import BytesIO
 from threading import Barrier
 from types import SimpleNamespace
 import unittest
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
-from PIL import Image
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from app.main import app
@@ -136,21 +134,24 @@ class Phase1Tests(unittest.TestCase):
         self.assertEqual(response.status_code, 413)
         self.ai.assert_not_called()
 
-    def test_minute_day_separate_account_limits(self):
+    def test_five_per_minute_separate_users_and_no_daily_cap(self):
         headers = self.login()
-        with patch.object(settings, 'GENERATION_RATE_LIMIT_PER_MINUTE', 1):
+        for _ in range(5):
             self.assertEqual(self.generate(headers).status_code, 200)
-            self.assertEqual(self.generate(headers).status_code, 429)
-            self.assertEqual(self.ai.await_count, 1)
+        self.assertEqual(self.generate(headers).status_code, 429)
+        self.assertEqual(self.ai.await_count, 5)
+        other = {'email': f'other-{uuid4().hex}@example.com', 'password': self.credentials['password']}
+        verified_registration(self.client, other)
+        token = self.client.post('/api/auth/login', json=other).json()['access_token']
+        self.assertEqual(self.generate({'Authorization': 'Bearer ' + token}).status_code, 200)
         with SessionLocal() as db:
-            row = db.scalar(select(GenerationAttempt).where(GenerationAttempt.user_id == self.user_id))
-            row.created_at -= timedelta(minutes=2); db.commit()
-        with patch.object(settings, 'GENERATION_RATE_LIMIT_PER_DAY', 1):
-            self.assertEqual(self.generate(headers).status_code, 429); self.assertEqual(self.ai.await_count, 1)
-            other = {'email': f'other-{uuid4().hex}@example.com', 'password': self.credentials['password']}
-            verified_registration(self.client, other)
-            token = self.client.post('/api/auth/login', json=other).json()['access_token']
-            self.assertEqual(self.generate({'Authorization': 'Bearer ' + token}).status_code, 200)
+            for row in db.scalars(select(GenerationAttempt).where(GenerationAttempt.user_id == self.user_id)):
+                row.created_at -= timedelta(minutes=2)
+            # More than the old daily allowance must not prevent a new minute.
+            db.add_all([GenerationAttempt(user_id=self.user_id, created_at=datetime.now(timezone.utc) - timedelta(hours=1)) for _ in range(100)])
+            db.commit()
+        self.assertEqual(self.generate(headers).status_code, 200)
+        self.assertEqual(self.ai.await_count, 7)
 
     def test_concurrent_limit(self):
         headers = self.login(); barrier = Barrier(6)
@@ -161,24 +162,11 @@ class Phase1Tests(unittest.TestCase):
             statuses = list(pool.map(call, range(6)))
         self.assertCountEqual(statuses, [200, 200, 429, 429, 429, 429]); self.assertEqual(self.ai.await_count, 2)
 
-    def test_images_accepted_not_stored(self):
+    def test_image_field_rejected(self):
         headers = self.login()
-        for fmt, mime in [('JPEG', 'image/jpeg'), ('PNG', 'image/png'), ('WEBP', 'image/webp')]:
-            buf = BytesIO(); Image.new('RGB', (10, 10), 'red').save(buf, format=fmt)
-            result = self.client.post('/api/generate', data=self.payload, files={'image': ('product.' + fmt.lower(), buf.getvalue(), mime)}, headers=headers)
-            self.assertEqual(result.status_code, 200); self.assertTrue(self.ai.call_args.args[1].startswith('data:' + mime))
-            history = self.client.get('/api/generations', headers=headers).text
-            self.assertNotIn('base64', history); self.assertNotIn('image', history)
-        with SessionLocal() as db: self.assertEqual(db.get(User, self.user_id).credits, 10)
-
-    def test_bad_images_no_ai(self):
-        headers = self.login()
-        for body, mime in [(b'<svg/>', 'image/svg+xml'), (b'<html/>', 'image/png'), (b'bad', 'image/jpeg'), (b'x' * (5 * 1024 * 1024 + 1), 'image/png')]:
-            result = self.client.post('/api/generate', data=self.payload, files={'image': ('fake.png', body, mime)}, headers=headers)
-            self.assertIn(result.status_code, [413, 422])
-        buf = BytesIO(); Image.new('RGB', (10, 10)).save(buf, format='PNG')
-        result = self.client.post('/api/generate', data=self.payload, files={'image': ('fake.jpg', buf.getvalue(), 'image/jpeg')}, headers=headers)
-        self.assertEqual(result.status_code, 422); self.ai.assert_not_called()
+        response = self.client.post('/api/generate', json={**self.payload, 'image': 'untrusted'}, headers=headers)
+        self.assertEqual(response.status_code, 422)
+        self.ai.assert_not_called()
 
     def test_failure_no_history(self):
         headers = self.login(); self.ai.side_effect = ai_service.AIUnavailable()
@@ -195,21 +183,13 @@ class Phase1Tests(unittest.TestCase):
         self.assertEqual(self.client.post('/api/auth/preferences', json={'ui_language': 'fr'}, headers=headers).status_code, 422)
         self.assertEqual(self.client.patch(f'/api/users/{self.user_id}', json={'email': 'new@example.com'}, headers=headers).status_code, 422)
 
-class MultimodalTests(unittest.IsolatedAsyncioTestCase):
-    async def test_one_image_call_and_prompt(self):
+class TextOnlyTests(unittest.IsolatedAsyncioTestCase):
+    async def test_one_text_call(self):
         create = AsyncMock(return_value=SimpleNamespace(output_text='Description', status='completed', usage=None))
         with patch.object(ai_service, 'get_client', return_value=SimpleNamespace(responses=SimpleNamespace(create=create))):
-            await ai_service.generate_product_description(GenerationRequest(product_name='Product', features='Details'), 'data:image/png;base64,dGVzdA==')
-        create.assert_awaited_once(); args = create.call_args.kwargs
-        self.assertEqual(args['input'][0]['content'][1]['type'], 'input_image'); self.assertFalse(args['store'])
-        for claim in ['waterproof rating', 'ingredients', 'country of origin', 'uncertain visual inference']: self.assertIn(claim, args['instructions'])
-
-class ProviderFailureTests(unittest.IsolatedAsyncioTestCase):
-    async def test_image_rejection_has_explicit_error(self):
-        import httpx
-        from openai import BadRequestError
-        create = AsyncMock(side_effect=BadRequestError('private model details', response=httpx.Response(400, request=httpx.Request('POST','https://example.invalid')), body=None))
-        with patch.object(ai_service, 'get_client', return_value=SimpleNamespace(responses=SimpleNamespace(create=create))):
-            with self.assertRaises(ai_service.AIImageUnsupported):
-                await ai_service.generate_product_description(GenerationRequest(product_name='Product', features='Details'), 'data:image/png;base64,dGVzdA==')
+            await ai_service.generate_product_description(GenerationRequest(product_name='Product', features='Details'))
         create.assert_awaited_once()
+        args = create.call_args.kwargs
+        self.assertIsInstance(args['input'], str)
+        self.assertNotIn('input_image', args['input'])
+        self.assertFalse(args['store'])

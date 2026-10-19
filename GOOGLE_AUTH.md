@@ -90,7 +90,7 @@ npm run build
 ```
 
 Manual Google sign-in remains to be tested after credentials are configured.
-Check a new account, repeat login after spending credits, existing-password
+Check a new account, repeat login with saved history, existing-password
 email conflict, explicit linking, cancellation, and session expiry. Do not
 paste tokens, authorization codes, credentials, or OAuth callback URLs into logs.
 

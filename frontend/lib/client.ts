@@ -17,10 +17,8 @@ export async function api<T>(path: string, body?: unknown): Promise<T> {
       ...(body === undefined
         ? {}
         : {
-            ...(body instanceof FormData
-              ? {}
-              : { headers: { "Content-Type": "application/json" } }),
-            body: body instanceof FormData ? body : JSON.stringify(body),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
           }),
     });
   } catch {

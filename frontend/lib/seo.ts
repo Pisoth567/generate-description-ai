@@ -19,7 +19,7 @@ export function siteOrigin(): string | undefined {
   }
 }
 export const productDescription =
-  "Upload a product image, add product details, and generate natural product descriptions in English or Khmer. Free to use, with saved history.";
+  "Generate natural product descriptions from your product information in English or Khmer. Free to use, with saved history.";
 export function publicMetadata(
   title: string,
   path: string,

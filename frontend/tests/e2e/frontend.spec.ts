@@ -2,7 +2,9 @@ import AxeBuilder from "@axe-core/playwright";
 import { test, expect, type Page } from "@playwright/test";
 async function login(page: Page) {
   await page.goto("/login");
-  await page.getByRole("textbox", { name: "Email", exact: true }).fill("designer@example.test");
+  await page
+    .getByRole("textbox", { name: "Email", exact: true })
+    .fill("designer@example.test");
   await page
     .getByLabel("Password", { exact: true })
     .fill("local-test-password");
@@ -24,7 +26,9 @@ test("registration, verification paste, resend cooldown, login verification path
   await expect(
     page.getByRole("link", { name: "Continue with Google" }),
   ).toHaveAttribute("href", "/api/auth/google/start");
-  await page.getByRole("textbox", { name: "Email", exact: true }).fill("new@example.test");
+  await page
+    .getByRole("textbox", { name: "Email", exact: true })
+    .fill("new@example.test");
   await page.getByLabel("Password", { exact: true }).fill("local-password");
   await page.getByLabel("Confirm Password").fill("different");
   await page.getByRole("button", { name: "Create Account" }).click();
@@ -37,7 +41,9 @@ test("registration, verification paste, resend cooldown, login verification path
   await expect(
     page.getByRole("button", { name: /Resend code/ }),
   ).toBeDisabled();
-  await expect(page.getByRole("textbox", { name: "Email", exact: true })).toHaveValue("new@example.test");
+  await expect(
+    page.getByRole("textbox", { name: "Email", exact: true }),
+  ).toHaveValue("new@example.test");
   await page.clock.fastForward(61000);
   await page.getByRole("button", { name: /Resend code/ }).click();
   await expect(page.getByRole("status")).toContainText("Code sent");
@@ -51,7 +57,7 @@ test("registration, verification paste, resend cooldown, login verification path
   await page.getByRole("button", { name: "Login", exact: true }).click();
   await expect(page.getByRole("link", { name: "Verify Email" })).toBeVisible();
 });
-test("multipart generation, custom keyboard category, images, languages and copy", async ({
+test("text generation, custom keyboard category, languages and copy", async ({
   page,
   context,
 }) => {
@@ -70,33 +76,7 @@ test("multipart generation, custom keyboard category, images, languages and copy
   await page
     .getByLabel("Product Details / Features")
     .fill("Cotton canvas\nInside pocket");
-  await page
-    .getByLabel("Product Image (optional)")
-    .setInputFiles({
-      name: "bad.svg",
-      mimeType: "image/svg+xml",
-      buffer: Buffer.from("<svg/>"),
-    });
-  await expect(page.locator("main").getByRole("alert")).toContainText(
-    "Choose a valid",
-  );
-  await page
-    .getByLabel("Product Image (optional)")
-    .setInputFiles({
-      name: "product.png",
-      mimeType: "image/png",
-      buffer: Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5WQAAAAASUVORK5CYII=",
-        "base64",
-      ),
-    });
-  await expect(
-    page.getByRole("img", { name: "Product image preview" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Remove image" }).click();
-  await expect(
-    page.getByRole("img", { name: "Product image preview" }),
-  ).toHaveCount(0);
+  await expect(page.locator('input[type="file"]')).toHaveCount(0);
   for (const language of ["English", "Khmer"]) {
     await page.getByLabel("Output Language").selectOption(language);
     const sent = page.waitForRequest(
@@ -106,7 +86,7 @@ test("multipart generation, custom keyboard category, images, languages and copy
       .getByRole("button", { name: "Generate Description", exact: true })
       .click();
     const request = await sent;
-    expect(request.headers()["content-type"]).toContain("multipart/form-data");
+    expect(request.headers()["content-type"]).toContain("application/json");
     expect(request.postData()).toContain("Handmade Khmer Products");
     await expect(page.locator(".description")).toHaveAttribute(
       "lang",
@@ -169,7 +149,14 @@ for (const width of [320, 375, 390, 768, 1024, 1440])
   test(`responsive and accessibility ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await login(page);
-    for (const path of ["/generate", "/history", "/profile", "/verify-email"]) {
+    for (const path of [
+      "/register",
+      "/login",
+      "/generate",
+      "/history",
+      "/profile",
+      "/verify-email",
+    ]) {
       await page.goto(path);
       await page.waitForLoadState("networkidle");
       expect(
@@ -196,7 +183,10 @@ test("rate limit error is friendly", async ({ page }) => {
   );
 });
 
-test("navigation locale persists, Khmer categories search, output stays independent", async ({ page, context }) => {
+test("navigation locale persists, Khmer categories search, output stays independent", async ({
+  page,
+  context,
+}) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await login(page);
   await page.getByLabel("Output Language").selectOption("Khmer");
@@ -206,14 +196,120 @@ test("navigation locale persists, Khmer categories search, output stays independ
   await page.getByRole("combobox", { name: "ប្រភេទ", exact: true }).click();
   await page.getByPlaceholder("ស្វែងរក ឬបញ្ចូលប្រភេទ").fill("អេឡិចត្រូនិក");
   await page.getByRole("option", { name: "អេឡិចត្រូនិក", exact: true }).click();
-  await expect(page.getByRole("combobox", { name: "ប្រភេទ", exact: true })).toContainText("អេឡិចត្រូនិក");
-  await expect(page.locator('input[name="category"]')).toHaveValue("Electronics");
+  await expect(
+    page.getByRole("combobox", { name: "ប្រភេទ", exact: true }),
+  ).toContainText("អេឡិចត្រូនិក");
+  await expect(page.locator('input[name="category"]')).toHaveValue(
+    "Electronics",
+  );
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("lang", "km");
   await page.goto("/history/1");
   await page.getByRole("button", { name: "ចម្លងការពិពណ៌នា" }).click();
-  await expect(page.getByText("Description copied to clipboard.", { exact: true })).toBeVisible();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toEqual(await page.locator(".description").innerText());
+  await expect(
+    page.getByText("Description copied to clipboard.", { exact: true }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toEqual(
+    await page.locator(".description").innerText(),
+  );
   await page.getByLabel("ភាសាក្នុងម៉ឺនុយ").selectOption("en");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
+});
+
+test("verification errors and email service failures are safe and localized", async ({
+  page,
+}) => {
+  await page.clock.install();
+  await page.goto("/verify-email");
+  await page
+    .getByRole("textbox", { name: "Email", exact: true })
+    .fill("review@example.test");
+  await page.getByLabel("Verification code").fill("123456");
+  await page.route("**/api/auth/verify-email", (route) =>
+    route.fulfill({
+      status: 400,
+      json: {
+        error: {
+          code: "invalid_verification_code",
+          message: "private provider detail",
+        },
+      },
+    }),
+  );
+  await page.getByRole("button", { name: "Verify Email", exact: true }).click();
+  await expect(page.locator("main").getByRole("alert")).toContainText(
+    "Invalid or expired code",
+  );
+  await page.route("**/api/auth/resend-verification", (route) =>
+    route.fulfill({
+      status: 503,
+      json: {
+        error: {
+          code: "email_delivery_unavailable",
+          message: "private provider detail",
+        },
+      },
+    }),
+  );
+  await page.clock.fastForward(61000);
+  await page.getByRole("button", { name: /Resend code/ }).click();
+  await expect(page.locator("main").getByRole("alert")).toContainText(
+    "Email delivery is unavailable",
+  );
+  await expect(page.getByRole("status")).toBeEmpty();
+  expect(await page.locator("main").innerText()).not.toContain(
+    "private provider detail",
+  );
+  await page.goto("/register");
+  await page.getByLabel("Application language").selectOption("km");
+  await page.goto("/verify-email");
+  await expect(
+    page.getByRole("heading", { name: "ផ្ទៀងផ្ទាត់អ៊ីមែលរបស់អ្នក" }),
+  ).toBeVisible();
+});
+
+test("Khmer active forms and category remain accessible in light and dark at all widths", async ({
+  page,
+}) => {
+  await login(page);
+  await page.getByLabel("Navigation language").selectOption("km");
+  for (const theme of ["light", "dark"]) {
+    await page.goto("/profile");
+    await page.getByLabel("រូបរាង", { exact: true }).selectOption(theme);
+    for (const width of [320, 375, 390, 768, 1024, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const path of [
+        "/register",
+        "/login",
+        "/verify-email",
+        "/generate",
+        "/history",
+        "/profile",
+      ]) {
+        await page.goto(path);
+        await expect(page.locator("html")).toHaveAttribute("lang", "km");
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        ).toBe(true);
+      }
+    }
+    for (const path of [
+      "/register",
+      "/login",
+      "/verify-email",
+      "/generate",
+      "/history",
+      "/profile",
+    ]) {
+      await page.goto(path);
+      expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    }
+    await page.goto("/generate");
+    await page.getByRole("combobox", { name: "ប្រភេទ", exact: true }).click();
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    await page.keyboard.press("Escape");
+  }
+  await page.getByLabel("ភាសាក្នុងម៉ឺនុយ").selectOption("en");
 });

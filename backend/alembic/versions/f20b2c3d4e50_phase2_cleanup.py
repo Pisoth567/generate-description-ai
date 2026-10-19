@@ -1,0 +1,49 @@
+"""Remove retired billing schema. BACK UP FIRST: deleted data is unrecoverable.
+
+Downgrade restores schema/defaults, never historical payments or balances/plans.
+Users and generations are preserved.
+"""
+from alembic import op
+import sqlalchemy as sa
+
+revision = "f20b2c3d4e50"
+down_revision = "e10a1b2c3d40"
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    op.drop_table("payments")
+    op.drop_column("users", "credits")
+    op.drop_column("users", "plan")
+
+
+def downgrade() -> None:
+    op.add_column("users", sa.Column("plan", sa.String(), server_default="free", nullable=False))
+    op.add_column("users", sa.Column("credits", sa.Integer(), server_default=sa.text("10"), nullable=False))
+    op.create_table('payments',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('tran_id', sa.String(length=20), nullable=False),
+    sa.Column('provider', sa.String(), server_default='aba_payway', nullable=False),
+    sa.Column('package_code', sa.String(), nullable=False),
+    sa.Column('amount', sa.Numeric(precision=12, scale=2), nullable=False),
+    sa.Column('currency', sa.String(), server_default='USD', nullable=False),
+    sa.Column('credits', sa.Integer(), nullable=False),
+    sa.Column('status', sa.String(), server_default='pending', nullable=False),
+    sa.Column('bank_ref', sa.String(), nullable=True),
+    sa.Column('apv', sa.String(), nullable=True),
+    sa.Column('payment_type', sa.String(), nullable=True),
+    sa.Column('paid_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('credited_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.CheckConstraint("(status = 'paid') = (credited_at IS NOT NULL)", name='ck_payments_credited_status'),
+    sa.CheckConstraint("status IN ('pending', 'paid', 'failed', 'cancelled')", name='ck_payments_status'),
+    sa.CheckConstraint('amount > 0', name='ck_payments_positive_amount'),
+    sa.CheckConstraint('credits > 0', name='ck_payments_positive_credits'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_payments_tran_id'), 'payments', ['tran_id'], unique=True)
+    op.create_index(op.f('ix_payments_user_id'), 'payments', ['user_id'], unique=False)

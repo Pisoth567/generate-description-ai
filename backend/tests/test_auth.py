@@ -56,7 +56,9 @@ class AuthAPITests(unittest.TestCase):
         self.created.append(body['id'])
         self.assertNotIn('password_hash', body)
         self.assertNotIn('password', body)
-        self.assertEqual((body['plan'], body['credits'], body['is_active']), ('free', 10, True))
+        self.assertTrue(body['is_active'])
+        self.assertNotIn('credits', body)
+        self.assertNotIn('plan', body)
         return body
 
     def login(self, email, password):
@@ -197,7 +199,7 @@ class AuthAPITests(unittest.TestCase):
         self.login(email, padded_password)
         self.assert_unauthorized(request('POST', '/api/auth/login', {
             'email': email, 'password': padded_password.strip()}), 'Invalid email or password')
-        self.assertEqual(request('GET', own_path, token=self.token)[1]['credits'], 10)
+        self.assertNotIn('credits', request('GET', own_path, token=self.token)[1])
 
     def test_existing_endpoints_openapi_and_cors(self):
         for path in ('/', '/health', '/health/database', '/docs'):

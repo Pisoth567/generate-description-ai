@@ -23,14 +23,10 @@ export async function backend<T>(
       redirect: "error",
       headers: {
         Accept: "application/json",
-        ...(body === undefined || body instanceof FormData
-          ? {}
-          : { "Content-Type": "application/json" }),
+        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      ...(body === undefined
-        ? {}
-        : { body: body instanceof FormData ? body : JSON.stringify(body) }),
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       signal: AbortSignal.timeout(90000),
     });
     if (!response.ok) {
@@ -44,9 +40,6 @@ export async function backend<T>(
             "invalid_verification_code",
             "email_configuration_required",
             "email_delivery_unavailable",
-            "invalid_image",
-            "image_too_large",
-            "image_model_unavailable",
           ].includes(candidate)
         )
           code = candidate;

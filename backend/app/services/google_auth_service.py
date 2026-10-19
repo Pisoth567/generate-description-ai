@@ -87,13 +87,13 @@ def authenticate_google_user(db: Session, identity: GoogleIdentity) -> User:
         if existing is not None:
             _email_conflict(existing)
         user = User(email=identity.email, google_sub=identity.sub, password_hash=None,
-                    plan="free", credits=10, is_active=True, email_verified_at=datetime.now(timezone.utc))
+                    is_active=True, email_verified_at=datetime.now(timezone.utc))
         db.add(user)
         try:
             db.commit()
         except IntegrityError:
             # A concurrent insert/link may have won either unique index. Never
-            # merge by email or add credits to the winner.
+            # merge by email.
             db.rollback()
             winner = _by_sub(db, identity.sub)
             if winner is not None:

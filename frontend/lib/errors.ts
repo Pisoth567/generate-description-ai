@@ -1,8 +1,6 @@
 export function errorMessage(status: number, path = "") {
-  if (path.includes("payments") && path.endsWith("/verify") && status >= 500)
-    return "Payment verification is temporarily unavailable. Please try again.";
-  if (path.includes("payments") && status >= 500)
-    return "Payment service is not currently available.";
+  if (path.includes("/auth/") && status === 503)
+    return "Email delivery is unavailable. Please try again later.";
   const messages: Record<number, string> = {
     400: "Please check your request.",
     401: "Please log in again. Your credentials may be incorrect or your session has expired.",

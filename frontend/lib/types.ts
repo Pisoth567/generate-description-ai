@@ -1,8 +1,6 @@
 export interface User {
   id: number;
   email: string;
-  plan: string;
-  credits: number;
   is_active: boolean;
   google_linked: boolean;
   email_verified_at: string | null;
@@ -32,31 +30,4 @@ export interface GenerationResult {
   tone: string;
   language: string;
   tokens_used: number;
-}
-export interface Package {
-  code: string;
-  amount: string;
-  currency: string;
-  credits: number;
-}
-export interface Payment {
-  id: number;
-  tran_id: string;
-  package_code: string;
-  amount: string;
-  currency: string;
-  credits: number;
-  status: string;
-  created_at: string;
-  paid_at: string | null;
-}
-export interface PaymentCheckoutResponse {
-  payment: Payment;
-  checkout: {
-    type: "aba_qr";
-    qr_image: string;
-    aba_deeplink: string;
-    app_store_url: string | null;
-    play_store_url: string | null;
-  };
 }

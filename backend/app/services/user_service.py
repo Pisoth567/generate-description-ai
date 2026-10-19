@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models.user import User
-from app.schemas.user import CreditResponse, UserCreate, UserUpdate
+from app.schemas.user import UserCreate, UserUpdate
 
 
 class UserServiceError(Exception):
@@ -21,10 +21,6 @@ class UserNotFound(UserServiceError):
 class DuplicateEmail(UserServiceError):
     def __init__(self):
         super().__init__("Email already exists")
-
-
-class InvalidCreditAdjustment(UserServiceError):
-    pass
 
 
 class DatabaseFailure(UserServiceError):
@@ -91,7 +87,7 @@ def create_user(db: Session, user_data: UserCreate) -> User:
         email = normalize_email(str(user_data.email))
         if get_user_by_email(db, email) is not None:
             raise DuplicateEmail()
-        user = User(email=email, plan="free", credits=10, is_active=True)
+        user = User(email=email, is_active=True)
         db.add(user)
         db.commit()
         db.refresh(user)
@@ -130,25 +126,3 @@ def deactivate_user(db: Session, user_id: int) -> User:
         db.commit()
         db.refresh(user)
         return user
-
-
-def adjust_user_credits(db: Session, user_id: int, amount: int) -> CreditResponse:
-    with database_operation(db):
-        if type(amount) is not int or amount == 0:
-            raise InvalidCreditAdjustment("Amount must be a nonzero integer")
-        user = locked_user(db, user_id)
-        previous = user.credits
-        current = previous + amount
-        if current < 0:
-            raise InvalidCreditAdjustment("Insufficient credits")
-        if current > 2_147_483_647:
-            raise InvalidCreditAdjustment("Credit balance exceeds supported maximum")
-        user.credits = current
-        db.commit()
-        # Return this transaction's balance, even if another adjustment follows.
-        return CreditResponse(
-            user_id=user_id,
-            previous_credits=previous,
-            adjustment=amount,
-            current_credits=current,
-        )

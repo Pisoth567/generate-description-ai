@@ -19,7 +19,7 @@ export function Landing() {
             <h1>{t("AI Product Description Generator")}</h1>
             <p className="lead">
               {t(
-                "Upload a product image, add product details, and generate natural product descriptions in English or Khmer.",
+                "Generate natural product descriptions from your product information in English or Khmer.",
               )}
             </p>
             <Link className="button mt-5" href="/register">
@@ -40,8 +40,9 @@ export function Landing() {
         </section>
         <section className="card-grid">
           {[
-            "Image-aware AI",
+            "Fast text-based generation",
             "English + Khmer output",
+            "Custom product categories",
             "Generation history",
             "Verified sign-in",
             "Free to use",

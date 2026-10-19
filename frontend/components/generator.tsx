@@ -1,8 +1,7 @@
 "use client";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { api, ApiError } from "@/lib/client";
+import { api } from "@/lib/client";
 import type { GenerationResult } from "@/lib/types";
 import { useTranslation } from "./preferences";
 import { CategoryCombobox } from "./category-combobox";
@@ -13,55 +12,22 @@ import { Textarea } from "./ui/textarea";
 export function Generator() {
   const { t } = useTranslation();
   const [category, setCategory] = useState("");
-  const [image, setImage] = useState<File | null>(null);
-  const [preview, setPreview] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<GenerationResult | null>(null);
-  const input = useRef<HTMLInputElement>(null);
-  const previewRef = useRef("");
-  useEffect(() => () => URL.revokeObjectURL(previewRef.current), []);
-  function choose(file: File | null) {
-    setError("");
-    URL.revokeObjectURL(previewRef.current);
-    previewRef.current = "";
-    setPreview("");
-    if (
-      file &&
-      (!["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
-        file.size > 5 * 1024 * 1024)
-    ) {
-      setError("Choose a valid JPG, PNG, or WebP image under 5 MiB.");
-      setImage(null);
-      if (input.current) input.current.value = "";
-      return;
-    }
-    setImage(file);
-    if (file) {
-      previewRef.current = URL.createObjectURL(file);
-      setPreview(previewRef.current);
-    }
-  }
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (busy) return;
     setBusy(true);
     setError("");
     const data = new FormData(e.currentTarget);
-    data.delete("image");
-    if (image) data.set("image", image);
     if (!category) data.delete("category");
     try {
-      setResult(await api<GenerationResult>("/api/generate", data));
-    } catch (e) {
-      setError(
-        e instanceof ApiError && e.code === "image_model_unavailable"
-          ? "The image could not be processed by the configured AI model."
-          : e instanceof ApiError &&
-              ["invalid_image", "image_too_large"].includes(e.code)
-            ? "Choose a valid JPG, PNG, or WebP image under 5 MiB."
-            : (e as Error).message,
+      setResult(
+        await api<GenerationResult>("/api/generate", Object.fromEntries(data)),
       );
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -72,54 +38,6 @@ export function Generator() {
       <p className="muted">{t("Saved automatically to History.")}</p>
       <div className="split">
         <form className="card form-stack" onSubmit={submit}>
-          <div
-            className="field rounded-lg border border-dashed p-4"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              choose(e.dataTransfer.files[0] || null);
-            }}
-          >
-            <label htmlFor="image">{t("Product Image (optional)")}</label>
-            <Input
-              ref={input}
-              id="image"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => choose(e.target.files?.[0] || null)}
-            />
-            <small>
-              {t("JPG / PNG / WebP · up to 5 MiB. Images are not saved.")}
-            </small>
-            {preview && (
-              <>
-                <Image
-                  unoptimized
-                  width={400}
-                  height={240}
-                  src={preview}
-                  alt={t("Product image preview")}
-                  className="max-h-52 max-w-full rounded object-contain"
-                  onError={() => {
-                    choose(null);
-                    setError(
-                      "Choose a valid JPG, PNG, or WebP image under 5 MiB.",
-                    );
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    choose(null);
-                    if (input.current) input.current.value = "";
-                  }}
-                >
-                  {t("Remove image")}
-                </Button>
-              </>
-            )}
-          </div>
           <label className="field">
             {t("Product Name")}
             <Input name="product_name" required maxLength={200} />

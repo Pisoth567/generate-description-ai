@@ -61,22 +61,22 @@ class GoogleAuthTests(unittest.TestCase):
         return self.client.post('/api/auth/google/link', json=self.payload,
                                 headers={'Authorization': 'Bearer ' + token})
 
-    def test_new_and_repeat_login_no_credit_refill_and_response_privacy(self):
+    def test_new_and_repeat_login_response_privacy(self):
         response = self.login()
         self.assertEqual(response.status_code, 200)
         token = response.json()['access_token']
         user_id = decode_access_token(token)
         with SessionLocal() as db:
             user = db.get(User, user_id)
-            self.assertEqual((user.email, user.google_sub, user.password_hash, user.plan,
-                              user.credits, user.is_active), (self.email, self.sub, None, 'free', 10, True))
-            user.credits = 3
+            self.assertEqual((user.email, user.google_sub, user.password_hash, user.is_active), (self.email, self.sub, None, True))
+            self.assertIsNotNone(user.email_verified_at)
             db.commit()
         second = self.login()
         self.assertEqual(second.status_code, 200)
         self.assertEqual(decode_access_token(second.json()['access_token']), user_id)
         me = self.client.get('/api/auth/me', headers={'Authorization': 'Bearer ' + token}).json()
-        self.assertEqual(me['credits'], 3)
+        self.assertNotIn('credits', me)
+        self.assertNotIn('plan', me)
         self.assertTrue(me['google_linked'])
         self.assertNotIn('google_sub', me)
         self.assertNotIn('password_hash', me)
@@ -116,7 +116,7 @@ class GoogleAuthTests(unittest.TestCase):
         self.assertEqual(self.login().status_code, 401)
 
     def test_password_and_legacy_email_conflicts_never_link(self):
-        user_id = self.local(password_hash='existing-hash', credits=4)
+        user_id = self.local(password_hash='existing-hash')
         for password_hash in ('existing-hash', None):
             with SessionLocal() as db:
                 db.get(User, user_id).password_hash = password_hash
@@ -129,22 +129,21 @@ class GoogleAuthTests(unittest.TestCase):
                 users = list(db.scalars(select(User).where(User.email == self.email)))
                 self.assertEqual(len(users), 1)
                 self.assertIsNone(users[0].google_sub)
-                self.assertEqual(users[0].credits, 4)
 
     def test_inactive_google_account_and_link_rejected(self):
         user_id = self.local(google_sub=self.sub, is_active=False)
         self.assertEqual(self.login().status_code, 403)
         self.assertEqual(self.link(user_id).status_code, 403)
 
-    def test_explicit_link_and_idempotency_no_credit_grant(self):
-        user_id = self.local(password_hash='existing-hash', credits=2)
+    def test_explicit_link_and_idempotency_preserves_password(self):
+        user_id = self.local(password_hash='existing-hash')
         self.verify.return_value = {**self.claims, 'email': self.email.upper()}
         for _ in range(2):
             response = self.link(user_id)
             self.assertEqual((response.status_code, response.json()), (200, {'linked': True}))
         with SessionLocal() as db:
             user = db.get(User, user_id)
-            self.assertEqual((user.google_sub, user.password_hash, user.credits), (self.sub, 'existing-hash', 2))
+            self.assertEqual((user.google_sub, user.password_hash), (self.sub, 'existing-hash'))
         self.assertEqual(decode_access_token(self.login().json()['access_token']), user_id)
 
     def test_link_requires_auth_and_matching_email(self):
@@ -182,7 +181,7 @@ class GoogleAuthTests(unittest.TestCase):
             self.assertNotIn('private-', response.text)
             self.assertNotIn('test-only-id-token', response.text)
 
-    def test_concurrent_creation_one_user_one_credit_grant(self):
+    def test_concurrent_creation_one_user(self):
         barrier = Barrier(2)
         def synchronize(conn, cursor, statement, parameters, context, executemany):
             if statement.startswith('INSERT INTO users'):
@@ -202,7 +201,6 @@ class GoogleAuthTests(unittest.TestCase):
         with SessionLocal() as db:
             users = list(db.scalars(select(User).where(User.google_sub == self.sub)))
             self.assertEqual(len(users), 1)
-            self.assertEqual(users[0].credits, 10)
 
     def test_concurrent_different_subject_same_email_conflicts(self):
         barrier = Barrier(2)

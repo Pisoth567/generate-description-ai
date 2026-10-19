@@ -279,19 +279,6 @@
     font-weight: 600;
     text-transform: capitalize;
   }
-  .paid {
-    background: #dcf2e7;
-    color: #165b3a;
-  }
-  .pending {
-    background: #fff1cc;
-    color: #714e00;
-  }
-  .failed,
-  .cancelled {
-    background: #fce6e4;
-    color: #862f25;
-  }
   .field {
     display: grid;
     gap: 0.5rem;
@@ -484,18 +471,6 @@
     padding: 2rem 0;
     margin-top: 2rem;
   }
-  .checkout {
-    max-width: 660px;
-    margin: 2rem auto;
-  }
-  .checkout img {
-    margin: 1.5rem auto;
-    background: white;
-    border-radius: 0.5rem;
-  }
-  .checkout .actions > * {
-    flex: 1;
-  }
   .empty-state {
     display: grid;
     justify-items: center;
@@ -586,10 +561,6 @@
     }
   }
   @media (max-width: 389px) {
-    .checkout .actions {
-      flex-direction: column;
-      align-items: stretch;
-    }
     .public-header .brand {
       font-size: 0.8rem;
     }
@@ -607,20 +578,6 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-}
-/* Status colors must override the Badge variant in both system themes. */
-[data-slot="badge"].paid {
-  background: #dcf2e7;
-  color: #165b3a;
-}
-[data-slot="badge"].pending {
-  background: #fff1cc;
-  color: #714e00;
-}
-[data-slot="badge"].failed,
-[data-slot="badge"].cancelled {
-  background: #fce6e4;
-  color: #862f25;
 }
 @layer components {
   .language-option {
@@ -642,53 +599,6 @@
   .language-option:has(input:focus-visible) {
     outline: 3px solid var(--ring);
     outline-offset: 3px;
-  }
-}
-@layer components {
-  .checkout-steps {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem 1.25rem;
-    padding: 0;
-    margin: 1.5rem 0;
-    list-style: none;
-    color: var(--muted-foreground);
-    font-size: 0.875rem;
-  }
-  .checkout-steps li {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  .checkout-steps li span {
-    display: grid;
-    place-items: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: var(--muted);
-    color: var(--foreground);
-    font-size: 0.75rem;
-    font-weight: 600;
-  }
-}
-/* Checkout keeps the QR stable while its content scrolls within the dialog. */
-.checkout-content {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.checkout-content img {
-  margin: 1rem auto;
-  background: white;
-  border-radius: 0.5rem;
-}
-.checkout-content .actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-}
-@media (max-width: 480px) {
-  .checkout-content .actions {
-    grid-template-columns: 1fr;
   }
 }
 

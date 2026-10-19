@@ -1,49 +1,24 @@
-# AI Product Description Generator
+# Generate Description AI
 
-Monorepo with a Next.js frontend and a modular FastAPI backend.
+Free, text-only product descriptions in English or Khmer. Next.js provides the bilingual UI and same-origin BFF; FastAPI handles verified accounts, Google identity, the OpenAI Responses API, and PostgreSQL history.
 
-## Run the backend
+Read [Phase 2 architecture, configuration, migration safety and local checks](PHASE2_PRODUCT_SIMPLIFICATION.md) before running migrations. Existing Phase 1 security and records are preserved except for the explicitly retired schema described there.
 
-Requires Python 3.10 or newer.
+## Local setup
+
+Backend requires PostgreSQL and the configuration in `backend/.env.example`. Copy it to an ignored `.env` and configure server-only secrets locally; defaults do not supply working database or provider credentials.
 
 ```bash
 cd backend
 python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
-
-Open http://127.0.0.1:8000, http://127.0.0.1:8000/health, or the interactive
-API documentation at http://127.0.0.1:8000/docs.
-
-Defaults work without an environment file. Available configuration is documented
-in `backend/.env.example`; environment variables override an optional
-`backend/.env`. Never commit real credentials. CORS allows
-`http://localhost:3000` by default, configurable with `FRONTEND_URL`.
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/generate \
-  -H 'Content-Type: application/json' \
-  -d '{"product_name":"Wireless Headphones","category":"Electronics","features":["Bluetooth 5.3","Noise cancellation","30-hour battery"],"tone":"professional","language":"English"}'
+cd frontend
+npm ci
+npm run dev
 ```
 
-The mock returns deterministic English copy based on the product, optional
-category, and required features list (which may be empty). Tone and language
-default to `professional` and `English` and are echoed as metadata; the mock does
-not translate or adapt tone. Invalid requests return HTTP 422.
-
-Routes live in `app/api`, validation models in `app/schemas`, configuration in
-`app/core`, and the replaceable mock generator in `app/services`. There are no
-AI-provider, database, authentication, credit-limit, or payment integrations yet.
-
-## Docker
-
-From the repository root:
-
-```bash
-docker build -t generate-description-api backend
-docker run --rm -p 8000:8000 generate-description-api
-```
-
-The container runs Uvicorn as a non-root user without development reload.
+Set frontend server-only `BACKEND_URL=http://127.0.0.1:8000` in the ignored `.env.local`. See [frontend instructions](frontend/README.md) for a provider-free fixture UI. Normal application generation and registration use configured providers; automated checks use mocks.

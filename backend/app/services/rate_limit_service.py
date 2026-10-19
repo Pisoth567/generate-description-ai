@@ -18,12 +18,11 @@ def reserve(db, user_id):
         # PostgreSQL clock after lock acquisition, not transaction start time.
         timestamp = db.scalar(select(func.clock_timestamp()))
         db.execute(delete(GenerationAttempt).where(GenerationAttempt.user_id == user_id,
-            GenerationAttempt.created_at <= timestamp - timedelta(days=1)))
+            GenerationAttempt.created_at <= timestamp - timedelta(minutes=1)))
         def count(since):
             return db.scalar(select(func.count()).select_from(GenerationAttempt).where(
                 GenerationAttempt.user_id == user_id, GenerationAttempt.created_at > since))
-        if (count(timestamp - timedelta(minutes=1)) >= settings.GENERATION_RATE_LIMIT_PER_MINUTE
-                or count(timestamp - timedelta(days=1)) >= settings.GENERATION_RATE_LIMIT_PER_DAY):
+        if count(timestamp - timedelta(minutes=1)) >= settings.GENERATION_RATE_LIMIT_PER_MINUTE:
             raise HTTPException(429, "Please wait a little before generating again.")
         db.add(GenerationAttempt(user_id=user_id, created_at=timestamp))
         db.commit()

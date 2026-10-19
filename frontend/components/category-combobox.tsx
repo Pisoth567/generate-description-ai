@@ -73,6 +73,7 @@ export function CategoryCombobox({
         </Popover.Trigger>
         <Popover.Portal>
           <Popover.Content
+            aria-label={t("Category")}
             align="start"
             className="z-50 w-[min(360px,calc(100vw-2rem))] rounded-lg border bg-card p-2 shadow-lg"
           >

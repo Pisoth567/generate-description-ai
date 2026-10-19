@@ -39,7 +39,7 @@ export function AuthForm({ register = false }: { register?: boolean }) {
       } else
         setError(
           e instanceof ApiError && e.code.startsWith("email_")
-            ? "Email delivery is not configured. Please try again later."
+            ? "Email delivery is unavailable. Please try again later."
             : "Please check your email and password.",
         );
     } finally {

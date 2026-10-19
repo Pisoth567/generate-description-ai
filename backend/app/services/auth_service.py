@@ -25,7 +25,7 @@ def register_user(db: Session, data: RegisterRequest) -> User:
             raise user_service.DuplicateEmail()
         user = User(
             email=email, password_hash=hash_password(data.password),
-            plan="free", credits=10, is_active=True,
+            is_active=True,
         )
         db.add(user)
         db.flush()

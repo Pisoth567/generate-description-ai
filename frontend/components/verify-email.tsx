@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useRef, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/client";
+import { api, ApiError } from "@/lib/client";
 import { useTranslation } from "./preferences";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -21,24 +21,37 @@ export function VerifyEmail() {
       setEmail(sessionStorage.getItem("verification_email") || ""),
     );
     resendAt.current = Date.now() + 60000;
-    const timer = setInterval(() => setCooldown(Math.max(0, Math.ceil((resendAt.current - Date.now()) / 1000))), 1000);
+    const timer = setInterval(
+      () =>
+        setCooldown(
+          Math.max(0, Math.ceil((resendAt.current - Date.now()) / 1000)),
+        ),
+      1000,
+    );
     return () => clearInterval(timer);
   }, []);
   async function verify(e: FormEvent) {
     e.preventDefault();
+    if (busy) return;
     setBusy(true);
     setError("");
     try {
       await api("/api/auth/verify-email", { email, code });
       sessionStorage.removeItem("verification_email");
       router.replace("/login?verified=1");
-    } catch {
-      setError("Invalid or expired code. Request a new code if needed.");
+    } catch (error) {
+      setError(
+        error instanceof ApiError && error.code === "invalid_verification_code"
+          ? "Invalid or expired code. Request a new code if needed."
+          : "Email delivery is unavailable. Please try again later.",
+      );
     } finally {
       setBusy(false);
     }
   }
   async function resend() {
+    if (busy || cooldown > 0) return;
+    setNotice("");
     setBusy(true);
     setError("");
     try {
@@ -47,7 +60,7 @@ export function VerifyEmail() {
       setCooldown(60);
       setNotice("Code sent if verification is needed.");
     } catch {
-      setError("Email delivery is not configured. Please try again later.");
+      setError("Email delivery is unavailable. Please try again later.");
     } finally {
       setBusy(false);
     }

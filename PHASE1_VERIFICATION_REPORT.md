@@ -1,3 +1,5 @@
+> Historical Phase 1 record. Current product behavior and setup are documented in [Phase 2](PHASE2_PRODUCT_SIMPLIFICATION.md).
+
 # Phase 1 verification and continuation report
 
 Reviewed on 2026-10-18 on `feature/core-product-redesign`. No commit, push, deployment, live OpenAI request, live Google OAuth exchange, verification email, or PayWay transaction was performed. All external service boundaries in tests were mocked; browser tests used the local fixture backend.

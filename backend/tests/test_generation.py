@@ -31,9 +31,6 @@ class GenerationAPITests(unittest.TestCase):
         self.client = TestClient(app)
         self.created = []
         self.addCleanup(self.cleanup)
-        self.cost = patch.object(settings, 'generation_credit_cost', 1)
-        self.cost.start()
-        self.addCleanup(self.cost.stop)
         self.user, self.headers = self.register()
         self.mock = patch.object(ai_service, 'generate_product_description', new_callable=AsyncMock)
         self.ai = self.mock.start()
@@ -60,14 +57,8 @@ class GenerationAPITests(unittest.TestCase):
         return self.client.post('/api/generate', json=PAYLOAD if payload is None else payload,
                                 headers=self.headers if headers is None else headers)
 
-    def balance(self, value):
+    def assert_state(self, count):
         with SessionLocal() as db:
-            db.get(User, self.user['id']).credits = value
-            db.commit()
-
-    def assert_state(self, credits, count):
-        with SessionLocal() as db:
-            self.assertEqual(db.get(User, self.user['id']).credits, credits)
             rows = list(db.scalars(select(Generation).where(Generation.user_id == self.user['id'])))
             self.assertEqual(len(rows), count)
             return rows
@@ -78,7 +69,7 @@ class GenerationAPITests(unittest.TestCase):
         body = response.json()
         self.assertEqual(body, {'generation_id': body['generation_id'], 'description': RESULT.description,
             'tone': 'professional', 'language': 'English', 'tokens_used': 123})
-        row = self.assert_state(10, 1)[0]
+        row = self.assert_state(1)[0]
         self.assertEqual((row.id, row.tokens_used, row.generated_text),
                          (body['generation_id'], 123, RESULT.description))
         self.assertEqual((row.product_name, row.category, row.user_id), ('Headphones', 'Audio', self.user['id']))
@@ -98,17 +89,16 @@ class GenerationAPITests(unittest.TestCase):
                 self.assertEqual(detail.json()['generated_text'], description)
                 history = self.client.get('/api/generations', headers=self.headers)
                 self.assertEqual(history.json()[0]['generated_text'], description)
-        self.assert_state(10, 2)
+        self.assert_state(2)
 
     def test_auth_and_zero_legacy_credits(self):
         for headers in ({}, {'Authorization': 'Bearer invalid'}):
             self.assertEqual(self.generate(headers=headers).status_code, 401)
-        self.assert_state(10, 0)
-        self.balance(0)
+        self.assert_state(0)
         response = self.generate()
         self.assertEqual(response.status_code, 200)
         self.ai.assert_awaited_once()
-        self.assert_state(0, 1)
+        self.assert_state(1)
 
     def assert_language_generation(self, language, product_name, omit_language=False):
         payload = {'product_name': product_name, 'features': ['Bluetooth 5.3']}
@@ -119,7 +109,7 @@ class GenerationAPITests(unittest.TestCase):
         self.assertEqual(response.json()['language'], language)
         self.ai.assert_awaited_once()
         self.assertIs(self.ai.await_args.args[0].language, GenerationLanguage(language))
-        row = self.assert_state(10, 1)[0]
+        row = self.assert_state(1)[0]
         self.assertIs(type(row.language), str)
         self.assertEqual(row.language, language)
         history = self.client.get('/api/generations', headers=self.headers)
@@ -140,14 +130,14 @@ class GenerationAPITests(unittest.TestCase):
             with self.subTest(language=language):
                 self.assertEqual(self.generate({**PAYLOAD, 'language': language}).status_code, 422)
                 self.ai.assert_not_called()
-                self.assert_state(10, 0)
+                self.assert_state(0)
 
     def test_language_values_are_case_sensitive(self):
         for language in ('english', 'khmer', 'ENGLISH', 'KHMER'):
             with self.subTest(language=language):
                 self.assertEqual(self.generate({**PAYLOAD, 'language': language}).status_code, 422)
                 self.ai.assert_not_called()
-                self.assert_state(10, 0)
+                self.assert_state(0)
 
     def test_failure_and_empty_no_charge(self):
         self.ai.side_effect = ai_service.AIUnavailable()
@@ -157,7 +147,7 @@ class GenerationAPITests(unittest.TestCase):
         self.ai.side_effect = None
         self.ai.return_value = ai_service.AIResult('  ', 123)
         self.assertEqual(self.generate().status_code, 503)
-        self.assert_state(10, 0)
+        self.assert_state(0)
 
     def test_insert_failure_leaves_no_partial_history(self):
         updates = []
@@ -175,10 +165,9 @@ class GenerationAPITests(unittest.TestCase):
         self.assertFalse(updates)
         self.assertEqual((response.status_code, response.json()),
                          (500, {'detail': 'Database operation failed'}))
-        self.assert_state(10, 0)
+        self.assert_state(0)
 
     def test_concurrent_free_generations(self):
-        self.balance(1)
         barrier = Barrier(2)
         async def concurrent_ai(request):
             await asyncio.to_thread(barrier.wait, 10)
@@ -189,7 +178,7 @@ class GenerationAPITests(unittest.TestCase):
             responses = [future.result(timeout=20) for future in futures]
         self.assertCountEqual([r.status_code for r in responses], [200, 200])
         self.assertEqual(self.ai.await_count, 2)
-        self.assert_state(1, 2)
+        self.assert_state(2)
 
     def test_deactivation_during_ai_and_no_open_transaction(self):
         # A separate transaction can lock/deactivate the user during the AI call.
@@ -199,7 +188,7 @@ class GenerationAPITests(unittest.TestCase):
             return RESULT
         self.ai.side_effect = deactivate
         self.assertEqual(self.generate().status_code, 403)
-        self.assert_state(10, 0)
+        self.assert_state(0)
         self.ai.reset_mock()
         self.assertEqual(self.generate().status_code, 403)
         self.ai.assert_not_called()
@@ -230,15 +219,13 @@ class GenerationAPITests(unittest.TestCase):
             with self.subTest(fields=list(changes)):
                 self.assertEqual(self.generate({**PAYLOAD, **changes}).status_code, 422)
         self.ai.assert_not_called()
-        self.assert_state(10, 0)
+        self.assert_state(0)
 
-    def test_legacy_cost_configuration_ignored(self):
-        with patch.object(settings, 'generation_credit_cost', 2):
-            response = self.generate()
+    def test_custom_category_and_no_billing_response(self):
+        response = self.generate({**PAYLOAD, 'category': 'Handmade Khmer Products'})
         self.assertEqual(response.status_code, 200)
-        self.ai.assert_awaited_once()
         self.assertNotIn('credits_used', response.json())
-        self.assert_state(10, 1)
+        self.assertEqual(self.assert_state(1)[0].category, 'Handmade Khmer Products')
 
 
 class AIServiceTests(unittest.IsolatedAsyncioTestCase):
@@ -344,9 +331,11 @@ class GenerationDocumentationTests(unittest.TestCase):
             response = client.get('/openapi.json')
             self.assertEqual(response.status_code, 200)
             spec = response.json()
-            schema = spec['paths']['/api/generate']['post']['requestBody']['content']['application/json']['schema']
+            content = spec['paths']['/api/generate']['post']['requestBody']['content']
+            self.assertEqual(set(content), {'application/json'})
+            schema = spec['components']['schemas']['GenerationRequest']
             self.assertEqual(schema['properties']['language']['default'], 'English')
-            self.assertEqual(schema['properties']['language']['enum'], ['English', 'Khmer'])
+            self.assertEqual(spec['components']['schemas']['GenerationLanguage']['enum'], ['English', 'Khmer'])
             self.assertEqual(client.get('/docs').status_code, 200)
 
     def test_health_endpoints(self):

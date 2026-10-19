@@ -14,13 +14,15 @@ class Settings(BaseSettings):
         hide_input_in_errors=True,
     )
 
-    PAYMENTS_ENABLED: bool = False
     EMAIL_PROVIDER: str = ""
     EMAIL_FROM: str = ""
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = Field(default=587, gt=0, le=65535)
+    SMTP_USERNAME: str = Field(default="", repr=False)
+    SMTP_PASSWORD: SecretStr | None = Field(default=None, repr=False)
+    SMTP_USE_TLS: bool = True
     EMAIL_VERIFICATION_SECRET: SecretStr | None = Field(default=None, repr=False)
-    EMAIL_API_KEY: SecretStr | None = Field(default=None, repr=False)
     GENERATION_RATE_LIMIT_PER_MINUTE: int = Field(default=5, gt=0)
-    GENERATION_RATE_LIMIT_PER_DAY: int = Field(default=50, gt=0)
     APP_NAME: str = "Generate Description AI API"
     APP_ENV: str = "development"
     GOOGLE_CLIENT_ID: str = ""
@@ -29,19 +31,10 @@ class Settings(BaseSettings):
     openai_model: str = ""
     openai_max_output_tokens: int = Field(default=600, gt=0, le=4096)
     openai_timeout_seconds: float = Field(default=30, gt=0, le=120)
-    generation_credit_cost: int = Field(default=1, gt=0, le=2_147_483_647)
     database_url: str = Field(repr=False)
     jwt_secret_key: SecretStr = Field(repr=False)
     jwt_algorithm: Literal["HS256"] = "HS256"
     access_token_expire_minutes: int = Field(default=30, gt=0)
-    PAYWAY_MERCHANT_ID: SecretStr | None = Field(default=None, repr=False)
-    PAYWAY_API_KEY: SecretStr | None = Field(default=None, repr=False)
-    PAYWAY_ENV: Literal["sandbox"] = "sandbox"
-    PAYWAY_API_URL: str = "https://checkout-sandbox.payway.com.kh"
-    PAYWAY_RETURN_URL: str = ""
-    PAYWAY_CONTINUE_SUCCESS_URL: str = ""
-    PAYWAY_CANCEL_URL: str = ""
-    PAYWAY_TIMEOUT_SECONDS: float = Field(default=15, gt=0, le=120)
 
     @field_validator("FRONTEND_URL")
     @classmethod

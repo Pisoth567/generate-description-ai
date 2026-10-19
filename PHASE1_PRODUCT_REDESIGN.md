@@ -1,3 +1,5 @@
+> Historical Phase 1 record. Current product behavior and setup are documented in [Phase 2](PHASE2_PRODUCT_SIMPLIFICATION.md).
+
 # Phase 1 product redesign
 
 The active product is a free AI Product Description Generator. Email/password and Google sign-in feed an authenticated Generate → History → Profile workflow. Existing users, descriptions, passwords, Google subjects, credits, and payment records are retained. No commit, push, deployment, live email, live OAuth, OpenAI API call, or PayWay transaction is part of this change.

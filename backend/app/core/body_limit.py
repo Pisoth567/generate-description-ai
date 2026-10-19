@@ -2,14 +2,14 @@ from starlette.responses import JSONResponse
 
 
 class BodyLimitMiddleware:
-    """Bound actual bytes, including chunked requests, before multipart parsing."""
+    """Bound actual bytes, including chunked requests, before JSON parsing."""
     def __init__(self, app):
         self.app = app
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http" or scope["method"] not in {"POST", "PATCH", "PUT"}:
             return await self.app(scope, receive, send)
-        limit = 6 * 1024 * 1024 if scope["path"] == "/api/generate" else 65536
+        limit = 65536
         parts, size = [], 0
         while True:
             message = await receive()

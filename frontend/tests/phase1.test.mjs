@@ -86,24 +86,16 @@ test("verification and resend remain public without granting a session", async (
     assert.doesNotMatch(await response.text(), /123456|access_token/);
   }
 });
-test("multipart forwards image and text with server-only authorization", async () => {
+test("JSON text forwards with server-only authorization", async () => {
   const f = fixture();
-  const data = new FormData();
-  data.set("product_name", "Product");
-  data.set("features", "One\nTwo");
-  data.set(
-    "image",
-    new Blob(["test-image"], { type: "image/png" }),
-    "test.png",
-  );
+  const data = { product_name: "Product", features: "One\nTwo" };
   const response = await f.proxy(
     request("/api/generate", data),
     "/api/generate",
   );
   assert.equal(response.status, 200);
   assert.equal(f.calls[0].token, "server-only-test-jwt");
-  assert.equal(f.calls[0].body.get("features"), "One\r\nTwo");
-  assert.equal(await f.calls[0].body.get("image").text(), "test-image");
+  assert.equal(f.calls[0].body.features, data.features);
   assert.doesNotMatch(
     await response.text(),
     /server-only-test-jwt|access_token/,
@@ -159,7 +151,11 @@ test("malformed multipart is a safe client error and never reaches backend", asy
   const f = fixture();
   const malformed = new Request("http://localhost:3000/api/generate", {
     method: "POST",
-    headers: { origin: "http://localhost:3000", host: "localhost:3000", "content-type": "multipart/form-data" },
+    headers: {
+      origin: "http://localhost:3000",
+      host: "localhost:3000",
+      "content-type": "multipart/form-data",
+    },
     body: "invalid multipart",
   });
   const response = await f.proxy(malformed, "/api/generate");

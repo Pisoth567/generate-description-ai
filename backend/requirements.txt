@@ -31,5 +31,3 @@ websockets==17.2
 openai>=2,<3
 httpx>=0.28.1,<0.29
 google-auth[requests]>=2.38,<3
-Pillow>=12,<13
-python-multipart>=0.0.22,<1

@@ -10,7 +10,6 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.generation import Generation
-    from app.models.payment import Payment
 
 
 class User(Base):
@@ -28,8 +27,6 @@ class User(Base):
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ui_language: Mapped[str] = mapped_column(String(2), default="en", server_default="en")
 
-    plan: Mapped[str] = mapped_column(String, default="free", server_default="free")
-    credits: Mapped[int] = mapped_column(Integer, default=10, server_default=text("10"))
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=text("true")
     )
@@ -44,4 +41,3 @@ class User(Base):
     generations: Mapped[list[Generation]] = relationship(
         back_populates="user", cascade="all, delete-orphan", passive_deletes=True
     )
-    payments: Mapped[list[Payment]] = relationship(back_populates="user", passive_deletes="all")
