@@ -1,4 +1,50 @@
 export const khmer = {
+  Features: "មុខងារ",
+  "How it works": "របៀបប្រើប្រាស់",
+  About: "អំពីកម្មវិធី",
+  "Sign In": "ចូលគណនី",
+  "Get Started": "ចាប់ផ្ដើមប្រើប្រាស់",
+  "Product Description": "ការពិពណ៌នាផលិតផល",
+  Example: "ឧទាហរណ៍",
+  "Wireless Headphones": "កាសឥតខ្សែ",
+  "A little information. A clear description.":
+    "ព័ត៌មានខ្លីៗ បង្កើតបានការពិពណ៌នាច្បាស់លាស់។",
+  "Write better product descriptions": "សរសេរការពិពណ៌នាផលិតផលឱ្យកាន់តែល្អ",
+  "in English or Khmer": "ជាភាសាអង់គ្លេស ឬខ្មែរ",
+  "Turn your product information into clear, natural descriptions for online stores, social media, and product listings.":
+    "ប្រែក្លាយព័ត៌មានផលិតផលរបស់អ្នកទៅជាការពិពណ៌នាច្បាស់លាស់ និងងាយអាន សម្រាប់ហាងអនឡាញ បណ្ដាញសង្គម និងបញ្ជីផលិតផល។",
+  "Start generating": "ចាប់ផ្ដើមបង្កើតអត្ថបទ",
+  "See how it works": "មើលរបៀបប្រើប្រាស់",
+  "Made for your words": "ជំនួយការសរសេររបស់អ្នក",
+  "Everything you need to find the right words":
+    "ជំនួយដែលអ្នកត្រូវការ ដើម្បីសរសេរបានល្អ",
+  "Write in the language your customers feel at home with.":
+    "សរសេរជាភាសាដែលអតិថិជនរបស់អ្នកងាយយល់ និងមានអារម្មណ៍ស្និទ្ធស្នាល។",
+  "Choose a category or add one that fits your product.":
+    "ជ្រើសរើសប្រភេទដែលមានស្រាប់ ឬបន្ថែមប្រភេទដែលសមនឹងផលិតផលរបស់អ្នក។",
+  "Description history": "ប្រវត្តិការពិពណ៌នា",
+  "Return to your saved descriptions whenever you need them.":
+    "បើកមើលការពិពណ៌នាដែលបានរក្សាទុកវិញ នៅពេលដែលអ្នកត្រូវការ។",
+  "Verified accounts": "គណនីដែលបានផ្ទៀងផ្ទាត់",
+  "Keep your work in your own verified account.":
+    "រក្សាទុកអត្ថបទរបស់អ្នកក្នុងគណនីផ្ទាល់ខ្លួនដែលបានផ្ទៀងផ្ទាត់។",
+  "Add product information": "បញ្ចូលព័ត៌មានផលិតផល",
+  "Start with a name, category, and the details that make your product useful.":
+    "បញ្ចូលឈ្មោះ ប្រភេទ និងព័ត៌មានលម្អិតអំពីអត្ថប្រយោជន៍នៃផលិតផលរបស់អ្នក។",
+  "Choose tone and language": "ជ្រើសរើសរបៀបសរសេរ និងភាសា",
+  "Find the right voice, then choose English or Khmer for your description.":
+    "ជ្រើសរើសរបៀបសរសេរដែលសមស្រប រួចជ្រើសភាសាអង់គ្លេស ឬខ្មែរសម្រាប់អត្ថបទរបស់អ្នក។",
+  "Generate and copy your description": "បង្កើត និងចម្លងការពិពណ៌នា",
+  "Review your text and copy it into your store or next social post.":
+    "ពិនិត្យអត្ថបទ រួចចម្លងទៅប្រើក្នុងហាង ឬការបង្ហោះលើបណ្ដាញសង្គម។",
+  "From product details to a finished description":
+    "ពីព័ត៌មានផលិតផល ទៅជាការពិពណ៌នាពេញលេញ",
+  "Your products. Your words.": "ផលិតផលរបស់អ្នក អត្ថបទតាមបែបរបស់អ្នក។",
+  "Ready to write your next product description?":
+    "ត្រៀមខ្លួនសរសេរការពិពណ៌នាផលិតផលបន្ទាប់ហើយឬនៅ?",
+  "A free AI writing tool for product descriptions in English and Khmer.":
+    "កម្មវិធី AI ឥតគិតថ្លៃសម្រាប់សរសេរការពិពណ៌នាផលិតផលជាភាសាអង់គ្លេស និងខ្មែរ។",
+
   "Close navigation": "បិទម៉ឺនុយ",
   Notifications: "ការជូនដំណឹង",
   "Close notification": "បិទការជូនដំណឹង",
@@ -30,7 +76,8 @@ export const khmer = {
     "សេវាបានផ្ដល់ចម្លើយមិនត្រឹមត្រូវ។ សូមព្យាយាមម្ដងទៀត។",
   "Google could not be linked. Please use the Google account with the same email and try again.":
     "មិនអាចភ្ជាប់ Google បាន។ សូមប្រើគណនី Google ដែលមានអ៊ីមែលដូចគ្នា រួចព្យាយាមម្ដងទៀត។",
-  "Navigation theme": "រូបរាងក្នុងម៉ឺនុយ",
+  "Switch to dark mode": "ប្ដូរទៅរូបរាងងងឹត",
+  "Switch to light mode": "ប្ដូរទៅរូបរាងភ្លឺ",
   "Filters apply to the current page.": "តម្រងអនុវត្តចំពោះទំព័របច្ចុប្បន្ន។",
   "No matching descriptions": "មិនមានការពិពណ៌នាដែលត្រូវគ្នា",
   "Could not connect. Please check your connection and try again.":
@@ -152,7 +199,6 @@ export const khmer = {
   Theme: "រូបរាង",
   Light: "ភ្លឺ",
   Dark: "ងងឹត",
-  System: "តាមប្រព័ន្ធ",
   "AI Product Description Generator": "កម្មវិធីបង្កើតការពិពណ៌នាផលិតផលដោយ AI",
   "Generate natural product descriptions from your product information in English or Khmer.":
     "បង្កើតការពិពណ៌នាផលិតផលបែបធម្មជាតិពីព័ត៌មានផលិតផលរបស់អ្នក ជាភាសាអង់គ្លេស ឬខ្មែរ។",

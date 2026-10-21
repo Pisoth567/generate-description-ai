@@ -190,7 +190,8 @@ test("navigation locale persists, Khmer categories search, output stays independ
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await login(page);
   await page.getByLabel("Output Language").selectOption("Khmer");
-  await page.getByLabel("Navigation language").selectOption("km");
+  await page.getByLabel("Navigation language").click();
+  await page.getByRole("menuitemradio", { name: "ខ្មែរ" }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "km");
   await expect(page.getByLabel("ភាសានៃអត្ថបទ")).toHaveValue("Khmer");
   await page.getByRole("combobox", { name: "ប្រភេទ", exact: true }).click();
@@ -212,7 +213,8 @@ test("navigation locale persists, Khmer categories search, output stays independ
   expect(await page.evaluate(() => navigator.clipboard.readText())).toEqual(
     await page.locator(".description").innerText(),
   );
-  await page.getByLabel("ភាសាក្នុងម៉ឺនុយ").selectOption("en");
+  await page.getByLabel("ភាសាក្នុងម៉ឺនុយ").click();
+  await page.getByRole("menuitemradio", { name: "English" }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
 });
 
@@ -272,10 +274,13 @@ test("Khmer active forms and category remain accessible in light and dark at all
   page,
 }) => {
   await login(page);
-  await page.getByLabel("Navigation language").selectOption("km");
+  await page.getByLabel("Navigation language").click();
+  await page.getByRole("menuitemradio", { name: "ខ្មែរ" }).click();
   for (const theme of ["light", "dark"]) {
     await page.goto("/profile");
-    await page.getByLabel("រូបរាង", { exact: true }).selectOption(theme);
+    await page.evaluate((value) => localStorage.setItem("theme", value), theme);
+    await page.reload();
+    await expect(page.locator("html")).toHaveClass(new RegExp(theme));
     for (const width of [320, 375, 390, 768, 1024, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       for (const path of [
@@ -304,12 +309,15 @@ test("Khmer active forms and category remain accessible in light and dark at all
       "/profile",
     ]) {
       await page.goto(path);
+      await expect(page.locator("main")).toBeVisible();
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     }
     await page.goto("/generate");
+    await expect(page.locator("main")).toBeVisible();
     await page.getByRole("combobox", { name: "ប្រភេទ", exact: true }).click();
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     await page.keyboard.press("Escape");
   }
-  await page.getByLabel("ភាសាក្នុងម៉ឺនុយ").selectOption("en");
+  await page.getByLabel("ភាសាក្នុងម៉ឺនុយ").click();
+  await page.getByRole("menuitemradio", { name: "English" }).click();
 });

@@ -13,7 +13,11 @@ export const metadata = {
 export default function Page() {
   return (
     <Suspense fallback={<AuthLoading />}>
+      <div className="min-h-screen flex items-center justify-center px-4">
+    <div className="w-full max-w-2xl border rounded-2xl">
       <AuthForm register={false} />
+    </div>
+  </div>
     </Suspense>
   );
 }

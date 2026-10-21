@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-test("deprecated routes redirect; profile language and all theme choices; no credit UX", async ({
+test("deprecated routes redirect; profile language and light/dark theme; no credit UX", async ({
   page,
 }) => {
   await page.goto("/login");
@@ -24,10 +24,22 @@ test("deprecated routes redirect; profile language and all theme choices; no cre
   await expect(
     page.getByRole("link", { name: "Link Google account" }),
   ).toHaveAttribute("href", "/api/auth/google/start?mode=link");
-  for (const theme of ["light", "dark", "system"]) {
-    await page.getByLabel("Theme", { exact: true }).selectOption(theme);
-    await expect.poll(() => page.evaluate(() => localStorage.getItem("theme"))).toBe(theme);
-  }
+  await page
+    .locator("#main-content")
+    .getByRole("button", { name: "Switch to dark mode" })
+    .click();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("theme")))
+    .toBe("dark");
+  await page.reload();
+  await expect(page.locator("html")).toHaveClass(/dark/);
+  await page
+    .locator("#main-content")
+    .getByRole("button", { name: "Switch to light mode" })
+    .click();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("theme")))
+    .toBe("light");
   await page.getByLabel("Application language").selectOption("km");
   await expect(page.locator("html")).toHaveAttribute("lang", "km");
   await expect(

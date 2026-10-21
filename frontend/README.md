@@ -1,6 +1,6 @@
 # Generate Description AI frontend
 
-Next.js App Router with a same-origin BFF, English/Khmer UI, and Light/Dark/System themes through next-themes and shadcn CSS variables.
+Next.js App Router with a same-origin BFF, English/Khmer UI, and Light/Dark themes through next-themes and shadcn CSS variables.
 
 Active pages: `/`, `/register`, `/verify-email`, `/login`, `/generate`, `/history`, `/history/[id]`, `/profile`. Authenticated navigation is Generate, History, Profile, language, theme and Logout. Legacy bookmarks redirect to Generate or Profile.
 

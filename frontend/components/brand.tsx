@@ -6,17 +6,13 @@ export function Brand({ href = "/" }: { href?: string }) {
     <Link
       href={href}
       className="brand"
-      aria-label="Generate Description AI home"
-    >
+      aria-label="Generate Description AI home">
       <span className="w-15">
         <Image src={logo} alt="" loading="eager" />
       </span>
-      <span className="brand-name">
+      <p className="text-xl">
         Generate
-        <span className="block text-xs font-normal text-muted-foreground">
-          Description AI
-        </span>
-      </span>
+      </p>
     </Link>
   );
 }

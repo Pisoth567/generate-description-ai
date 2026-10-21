@@ -8,6 +8,10 @@ import { ErrorMessage } from "./ui";
 import { Brand } from "./brand";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import logo from "../app/no background.png";
+import Image from "next/image";
+import google_icon from "../public/google.png";
+
 export function AuthForm({ register = false }: { register?: boolean }) {
   const { t } = useTranslation();
   const params = useSearchParams();
@@ -48,8 +52,10 @@ export function AuthForm({ register = false }: { register?: boolean }) {
   }
   return (
     <main id="main-content" className="auth">
-      <Brand />
-      <h1>{t(register ? "Create Account" : "Login")}</h1>
+      <div className="flex items-center justify-center">
+        <Image className="w-30" src={logo} alt="logo"/>
+      </div>
+      <h1 className="text-center">{t(register ? "Create Account" : "Login")}</h1>
       {params.has("error") && (
         <ErrorMessage
           message={t("Something went wrong. Please try again later.")}
@@ -109,14 +115,18 @@ export function AuthForm({ register = false }: { register?: boolean }) {
       </form>
       <p className="text-center">{t("or")}</p>
       <a className="button secondary w-full" href="/api/auth/google/start">
+        <Image className="w-6" src={google_icon} alt="google icon"/>
         {t("Continue with Google")}
       </a>
-      <p>
-        <Link href={register ? "/login" : "/register"}>
-          {t(register ? "Login" : "Create Account")}
-        </Link>
-      </p>
-      <PreferenceControls />
+          <p className="text-center text-sm text-muted-foreground">
+            {t(register ? "Already have an account?" : "Don't have an account?")}{" "}
+            <Link
+              href={register ? "/login" : "/register"}
+              className="font-bold text-primary underline-offset-4 hover:underline"
+            >
+              {t(register ? "Login" : "Create Account")}
+            </Link>
+          </p>
     </main>
   );
 }
