@@ -19,6 +19,7 @@ function safeUser(user: User): User {
     email: user.email,
     is_active: user.is_active,
     google_linked: user.google_linked === true,
+    avatar_id: user.avatar_id ?? null,
     email_verified_at: user.email_verified_at,
     ui_language: user.ui_language,
     created_at: user.created_at,
@@ -28,7 +29,7 @@ function safeUser(user: User): User {
 export async function proxy(request: Request, path: string) {
   const jar = await cookies();
   try {
-    if (request.method === "POST") {
+    if (request.method === "POST" || request.method === "PATCH") {
       const origin = request.headers.get("origin");
       let source: URL;
       try {
@@ -58,7 +59,7 @@ export async function proxy(request: Request, path: string) {
     const token = jar.get("access_token")?.value;
     if (!publicRoute && !token) throw new BackendError(401);
     let body: unknown;
-    if (request.method === "POST") {
+    if (request.method === "POST" || request.method === "PATCH") {
       const bytes = await limitedBody(request, 65536);
       if (!request.headers.get("content-type")?.startsWith("application/json"))
         throw new BackendError(400);
@@ -106,8 +107,13 @@ export async function proxy(request: Request, path: string) {
       target,
       publicRoute ? undefined : token,
       body,
+      request.method === "PATCH" ? "PATCH" : undefined,
     );
-    if (path === "/api/auth/me" || path === "/api/auth/register")
+    if (
+      path === "/api/auth/me" ||
+      path === "/api/auth/register" ||
+      path === "/api/profile/avatar"
+    )
       return json(
         safeUser(data as User),
         path.endsWith("register") ? 201 : 200,

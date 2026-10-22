@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Keep browser verification separate from an already-running developer server.
+  distDir: process.env.NEXT_TEST_DIST_DIR || ".next",
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,

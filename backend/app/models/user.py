@@ -17,6 +17,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
+    avatar_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     password_hash: Mapped[str | None] = mapped_column(String, nullable=True)
     google_sub: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True, index=True)
 

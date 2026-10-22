@@ -140,6 +140,10 @@ class CleanupMigrationTests(unittest.TestCase):
                     conn.execute(text("INSERT INTO users(email, credits, password_hash, email_verified_at) VALUES ('legacy@example.test', 0, 'preserved-hash', now())"))
                     conn.execute(text("INSERT INTO generations(user_id, product_name, generated_text) VALUES (1, 'Legacy product', 'Preserved history')"))
                     conn.execute(text("INSERT INTO payments(user_id, tran_id, package_code, amount, credits) VALUES (1, 'legacy', 'legacy', 1, 10)"))
+                # Supply the newer avatar column for the current ORM while testing
+                # legacy zero-balance generation; remove it before migration replay.
+                with local.begin() as conn:
+                    conn.execute(text('ALTER TABLE users ADD COLUMN avatar_id VARCHAR(32)'))
                 # The current code also works before cleanup, with a zero legacy balance.
                 with Session(local) as db:
                     result = generation_service.finalize_generation(db, 1,
@@ -148,6 +152,8 @@ class CleanupMigrationTests(unittest.TestCase):
                     self.assertTrue(result.generation_id)
                 with local.connect() as conn:
                     self.assertEqual(conn.scalar(text('SELECT credits FROM users WHERE id=1')), 0)
+                with local.begin() as conn:
+                    conn.execute(text('ALTER TABLE users DROP COLUMN avatar_id'))
                 command.upgrade(config, 'head')
                 command.check(config)
                 inspector = inspect(local)

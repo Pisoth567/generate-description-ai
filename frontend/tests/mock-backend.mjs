@@ -5,6 +5,7 @@ const user = {
   email: "designer@example.test",
   is_active: true,
   google_linked: false,
+  avatar_id: null,
   email_verified_at: "2026-01-01T00:00:00Z",
   ui_language: "en",
   created_at: "2026-01-01T00:00:00Z",
@@ -67,6 +68,10 @@ const server = http.createServer(async (req, res) => {
   if (!req.headers.authorization) return send({}, 401);
   if (url.pathname === "/api/auth/preferences") {
     user.ui_language = body.ui_language;
+    return send(user);
+  }
+  if (url.pathname === "/api/profile/avatar" && req.method === "PATCH") {
+    user.avatar_id = body.avatar_id;
     return send(user);
   }
   if (url.pathname === "/api/auth/me") return send(user);

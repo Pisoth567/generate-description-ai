@@ -13,12 +13,13 @@ export async function backend<T>(
   path: string,
   token?: string,
   body?: unknown,
+  method?: "PATCH",
 ): Promise<T> {
   try {
     const base = process.env.BACKEND_URL;
     if (!base) throw new BackendError(502, path);
     const response = await fetch(`${base.replace(/\/$/, "")}${path}`, {
-      method: body === undefined ? "GET" : "POST",
+      method: method ?? (body === undefined ? "GET" : "POST"),
       cache: "no-store",
       redirect: "error",
       headers: {
