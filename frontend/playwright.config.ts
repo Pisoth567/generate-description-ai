@@ -22,6 +22,7 @@ export default defineConfig({
       timeout: 120000,
       reuseExistingServer: false,
       env: {
+        NEXT_TEST_DIST_DIR: ".next-e2e",
         BACKEND_URL: "http://127.0.0.1:4311",
         SITE_URL: "https://description.example",
         GOOGLE_CLIENT_ID: "",

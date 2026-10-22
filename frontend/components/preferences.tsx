@@ -121,7 +121,9 @@ export function ThemeControl() {
     () => true,
     () => false,
   );
-  const currentTheme = theme === "dark" ? "dark" : "light";
+  // Match the server icon and label on the first hydration render. The stored
+  // next-themes value is only available in the browser.
+  const currentTheme = mounted && theme === "dark" ? "dark" : "light";
   const label = t(
     currentTheme === "light" ? "Switch to dark mode" : "Switch to light mode",
   );

@@ -30,11 +30,20 @@ function fixture(token = "server-only-test-jwt") {
     },
     "./backend": {
       BackendError,
-      backend: async (path, token, body) => {
-        calls.push({ path, token, body });
+      backend: async (path, token, body, method) => {
+        calls.push({ path, token, body, method });
         return path.endsWith("/login")
           ? { access_token: "must-not-reach-browser", expires_in: 3600 }
-          : { ok: true };
+          : path === "/api/profile/avatar"
+            ? {
+                avatar_id: body.avatar_id,
+                email: "designer@example.com",
+                google_sub: "private",
+                password_hash: "private",
+                otp_digest: "private",
+                access_token: "private",
+              }
+            : { ok: true };
       },
     },
   };
@@ -161,4 +170,55 @@ test("malformed multipart is a safe client error and never reaches backend", asy
   const response = await f.proxy(malformed, "/api/generate");
   assert.equal(response.status, 400);
   assert.equal(f.calls.length, 0);
+});
+
+test("avatar PATCH requires origin and authentication, forwards PATCH and sanitizes profile", async () => {
+  const path = "/api/profile/avatar";
+  function patchRequest(
+    origin = "http://localhost:3000",
+    body = { avatar_id: "avatar-04" },
+  ) {
+    return new Request("http://localhost:3000" + path, {
+      method: "PATCH",
+      headers: {
+        origin,
+        host: "localhost:3000",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  }
+  const f = fixture();
+  assert.equal(
+    (await f.proxy(patchRequest("https://evil.example"), path)).status,
+    403,
+  );
+  assert.equal((await f.proxy(patchRequest(""), path)).status, 403);
+  assert.equal(f.calls.length, 0);
+  const anon = fixture(null);
+  assert.equal((await anon.proxy(patchRequest(), path)).status, 401);
+  assert.equal(anon.calls.length, 0);
+  const result = await f.proxy(patchRequest(), path);
+  assert.equal(result.status, 200);
+  assert.equal(f.calls[0].method, "PATCH");
+  assert.equal(f.calls[0].body.avatar_id, "avatar-04");
+  const profile = await result.json();
+  assert.equal(profile.avatar_id, "avatar-04");
+  assert.equal(profile.email, "designer@example.com");
+  for (const key of [
+    "google_sub",
+    "password_hash",
+    "otp_digest",
+    "access_token",
+  ])
+    assert.equal(key in profile, false);
+  assert.equal(
+    (
+      await f.proxy(
+        patchRequest(undefined, { avatar_id: "x".repeat(65536) }),
+        path,
+      )
+    ).status,
+    413,
+  );
 });

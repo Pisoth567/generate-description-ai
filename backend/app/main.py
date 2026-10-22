@@ -11,6 +11,7 @@ from app.api.generations import router as generations_router
 from app.services.ai_service import close_client
 from app.api.health import router as health_router
 from app.api.users import router as users_router
+from app.api.profile import router as profile_router
 from app.core.config import settings
 from app.core.body_limit import BodyLimitMiddleware
 
@@ -35,6 +36,7 @@ app.include_router(generations_router)
 app.include_router(health_router)
 app.include_router(users_router)
 app.include_router(auth_router)
+app.include_router(profile_router)
 
 
 @app.exception_handler(RequestValidationError)

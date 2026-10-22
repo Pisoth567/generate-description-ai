@@ -33,7 +33,13 @@ for (const locale of ["en", "km"]) {
             () => document.documentElement.scrollWidth <= innerWidth,
           ),
         ).toBe(true);
-        await expect(page.locator("h1")).toBeVisible();
+        await expect(page.getByRole("heading", {
+          level: 1,
+          name: locale === "en"
+            ? "Write better product descriptions in English or Khmer"
+            : "សរសេរការពិពណ៌នាផលិតផលឱ្យកាន់តែល្អ ជាភាសាអង់គ្លេស ឬខ្មែរ",
+          exact: true,
+        })).toBeVisible();
         await expect(page.locator(".landing-demo")).toBeVisible();
         await expect(page.locator(".landing-nav .language-toggle")).toBeVisible();
         await expect(page.locator(".landing-nav .theme-toggle")).toBeVisible();

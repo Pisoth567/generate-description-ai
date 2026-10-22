@@ -1,4 +1,19 @@
 export const khmer = {
+  Close: "បិទ",
+  Save: "រក្សាទុក",
+  "Change avatar": "ប្ដូររូបតំណាង",
+  "Choose your avatar": "ជ្រើសរើសរូបតំណាងរបស់អ្នក",
+  "Choose a built-in avatar or use your initial.":
+    "ជ្រើសរើសរូបតំណាងដែលមានស្រាប់ ឬប្រើអក្សរដំបូងនៃអ៊ីមែលរបស់អ្នក។",
+  "Select avatar": "ជ្រើសរើសរូបតំណាងលេខ",
+  "Use initials": "ប្រើអក្សរដំបូង",
+  "Profile avatar": "រូបតំណាងប្រវត្តិរូប",
+  "Initials avatar": "រូបតំណាងជាអក្សរដំបូង",
+  "Google Connected": "បានភ្ជាប់ជាមួយ Google",
+  "Log out": "ចាកចេញពីគណនី",
+  "Avatar updated successfully.": "បានប្ដូររូបតំណាងដោយជោគជ័យ។",
+  "Could not update your avatar. Please try again.":
+    "មិនអាចប្ដូររូបតំណាងបានទេ។ សូមព្យាយាមម្ដងទៀត។",
   Features: "មុខងារ",
   "How it works": "របៀបប្រើប្រាស់",
   About: "អំពីកម្មវិធី",

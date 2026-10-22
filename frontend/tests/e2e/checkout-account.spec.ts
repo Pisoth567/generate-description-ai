@@ -23,9 +23,9 @@ test("deprecated routes redirect; profile language and light/dark theme; no cred
   await expect(page.getByText("Verified", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Link Google account" }),
-  ).toHaveAttribute("href", "/api/auth/google/start?mode=link");
+  ).toHaveCount(0);
   await page
-    .locator("#main-content")
+    .locator("header")
     .getByRole("button", { name: "Switch to dark mode" })
     .click();
   await expect
@@ -34,13 +34,14 @@ test("deprecated routes redirect; profile language and light/dark theme; no cred
   await page.reload();
   await expect(page.locator("html")).toHaveClass(/dark/);
   await page
-    .locator("#main-content")
+    .locator("header")
     .getByRole("button", { name: "Switch to light mode" })
     .click();
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem("theme")))
     .toBe("light");
-  await page.getByLabel("Application language").selectOption("km");
+  await page.getByRole("button", { name: "Navigation language" }).click();
+  await page.getByRole("menuitemradio", { name: "ខ្មែរ" }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "km");
   await expect(
     page.getByRole("heading", { name: "ប្រវត្តិរូប" }),
@@ -55,7 +56,8 @@ test("deprecated routes redirect; profile language and light/dark theme; no cred
       ),
     ).toBe(true);
   }
-  await page.getByLabel("ភាសាកម្មវិធី").selectOption("en");
+  await page.getByRole("button", { name: "ភាសាក្នុងម៉ឺនុយ" }).click();
+  await page.getByRole("menuitemradio", { name: "English" }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(
     page.getByRole("link", { name: /Pricing|Payments|Dashboard|Buy credits/i }),

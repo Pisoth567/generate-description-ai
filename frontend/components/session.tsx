@@ -21,6 +21,7 @@ import {
 import type { User } from "@/lib/types";
 import { api } from "@/lib/client";
 import { ErrorMessage } from "./ui";
+import { UserAvatar } from "./user-avatar";
 import { Brand } from "./brand";
 import { Button } from "./ui/button";
 import { LanguageControl, ThemeControl, useTranslation } from "./preferences";
@@ -43,6 +44,9 @@ import {
 const Session = createContext<{
   user: User;
   refresh: () => Promise<void>;
+  setUser: (user: User) => void;
+  logout: () => Promise<void>;
+  loggingOut: boolean;
 } | null>(null);
 export function useSession() {
   const session = useContext(Session);
@@ -112,7 +116,9 @@ export function SessionShell({
       pathname.startsWith(`/${item.label.toLowerCase()}`),
     )?.label ?? "Workspace";
   return (
-    <Session.Provider value={{ user, refresh }}>
+    <Session.Provider
+      value={{ user, refresh, setUser, logout, loggingOut: busy }}
+    >
       <div className="app-shell">
         <aside
           className={`sidebar ${collapsed ? "collapsed" : ""}`}
@@ -147,7 +153,11 @@ export function SessionShell({
                     <Menu />
                   </Button>
                 </SheetTrigger>
-                <SheetContent closeLabel={t("Close navigation")} side="left" className="w-[min(320px,90vw)] p-5">
+                <SheetContent
+                  closeLabel={t("Close navigation")}
+                  side="left"
+                  className="w-[min(320px,90vw)] p-5"
+                >
                   <SheetHeader>
                     <SheetTitle>Generate Description AI</SheetTitle>
                     <SheetDescription>{t("Your workspace")}</SheetDescription>
@@ -188,9 +198,7 @@ export function SessionShell({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" aria-label={t("Profile menu")}>
-                    <span className="grid size-8 place-items-center rounded-full bg-accent font-semibold">
-                      {user.email.slice(0, 1).toUpperCase()}
-                    </span>
+                    <UserAvatar email={user.email} avatarId={user.avatar_id} />
                     <ChevronDown aria-hidden="true" />
                   </Button>
                 </DropdownMenuTrigger>

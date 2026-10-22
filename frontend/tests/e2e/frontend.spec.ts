@@ -263,7 +263,8 @@ test("verification errors and email service failures are safe and localized", as
     "private provider detail",
   );
   await page.goto("/register");
-  await page.getByLabel("Application language").selectOption("km");
+  // Auth forms use the stored preference; they have no language selector.
+  await page.evaluate(() => localStorage.setItem("ui_language", "km"));
   await page.goto("/verify-email");
   await expect(
     page.getByRole("heading", { name: "ផ្ទៀងផ្ទាត់អ៊ីមែលរបស់អ្នក" }),
@@ -273,6 +274,7 @@ test("verification errors and email service failures are safe and localized", as
 test("Khmer active forms and category remain accessible in light and dark at all widths", async ({
   page,
 }) => {
+  test.setTimeout(180000);
   await login(page);
   await page.getByLabel("Navigation language").click();
   await page.getByRole("menuitemradio", { name: "ខ្មែរ" }).click();

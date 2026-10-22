@@ -3,6 +3,7 @@ export interface User {
   email: string;
   is_active: boolean;
   google_linked: boolean;
+  avatar_id: string | null;
   email_verified_at: string | null;
   ui_language: "en" | "km";
   created_at: string;
