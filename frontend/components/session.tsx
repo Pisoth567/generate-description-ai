@@ -68,6 +68,8 @@ export function SessionShell({
   const [user, setUser] = useState(initialUser),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
+  // Keep portaled navigation menus inside the header landmark for screen readers.
+  const [menuContainer, setMenuContainer] = useState<HTMLElement | null>(null);
   const [collapsed, setCollapsed] = useState(false),
     [open, setOpen] = useState(false);
   const { t, setLocale } = useTranslation();
@@ -128,7 +130,7 @@ export function SessionShell({
           <nav aria-label={t("Main navigation")}>{links()}</nav>
         </aside>
         <div className="workspace">
-          <header className="workspace-header">
+          <header ref={setMenuContainer} className="workspace-header">
             <div className="flex items-center gap-3">
               <Button
                 className="hidden lg:inline-flex"
@@ -189,13 +191,15 @@ export function SessionShell({
             </div>
             <div className="flex min-w-0 flex-wrap justify-end items-center gap-2 sm:gap-4">
               <LanguageControl
+                menuContainer={menuContainer}
                 onLanguage={async (ui_language) => {
                   await api("/api/auth/preferences", { ui_language });
                   await refresh();
                 }}
               />
               <ThemeControl />
-              <DropdownMenu>
+              {/* Keep navigation menus non-modal while page segments hydrate. */}
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" aria-label={t("Profile menu")}>
                     <UserAvatar email={user.email} avatarId={user.avatar_id} />
@@ -203,6 +207,7 @@ export function SessionShell({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
+                  container={menuContainer}
                   align="end"
                   className="w-64 max-w-[calc(100vw-2rem)]"
                 >

@@ -1,0 +1,85 @@
+// Generate Description AI
+// Current active schema after Phase 2 cleanup + profile avatar system.
+// Payments, credits, plans, and image-generation schema are intentionally excluded.
+
+Project description_generate_tool {
+  database_type: 'PostgreSQL'
+  Note: 'AI Product Description Generator with email OTP verification, Google OAuth, generation history, rate limiting, and built-in profile avatars.'
+}
+
+Table users {
+  id integer [pk, increment]
+
+  email varchar(254) [not null, unique]
+  password_hash varchar [note: 'Nullable for Google-only accounts']
+  google_sub varchar [unique, note: 'Stable Google identity subject; nullable for email/password-only accounts']
+
+  email_verified_at timestamptz [note: 'Null until email ownership is verified']
+  is_active boolean [not null, default: true]
+
+  ui_language varchar(2) [not null, default: 'en', note: 'Application UI language: en or km']
+  avatar_id varchar(32) [note: 'Built-in avatar ID such as avatar-01; null uses initials fallback']
+
+  created_at timestamptz [not null]
+
+  Indexes {
+    email [unique, name: 'ix_users_email']
+    google_sub [unique, name: 'ix_users_google_sub']
+  }
+
+  Note: 'Core authenticated user account. No credits, plan, payment data, OTP plaintext, or profile-image binary data is stored here.'
+}
+
+Table generations {
+  id integer [pk, increment]
+  user_id integer [not null]
+
+  product_name varchar [not null]
+  category varchar [not null]
+  details text [not null]
+  tone varchar [not null]
+  language varchar(2) [not null, note: 'Generated output language: en or km']
+  description text [not null]
+
+  created_at timestamptz [not null]
+
+  Indexes {
+    user_id [name: 'ix_generations_user_id']
+  }
+
+  Note: 'Stores text-only product description generation history. Each row belongs to exactly one authenticated user.'
+}
+
+Table email_verification_codes {
+  id integer [pk, increment]
+  user_id integer [not null]
+
+  code_digest varchar [not null, note: 'Keyed/HMAC digest only; OTP plaintext is never stored']
+  expires_at timestamptz [not null]
+  attempts integer [not null, default: 0]
+  consumed_at timestamptz
+  created_at timestamptz [not null]
+
+  Indexes {
+    user_id
+  }
+
+  Note: 'Email ownership verification codes. Codes expire, have limited attempts, and are consumed after successful verification.'
+}
+
+Table generation_attempts {
+  id integer [pk, increment]
+  user_id integer [not null]
+  created_at timestamptz [not null]
+
+  Indexes {
+    user_id
+    created_at
+  }
+
+  Note: 'Server-side generation request records used for PostgreSQL-backed per-user anti-abuse rate limiting.'
+}
+
+Ref: generations.user_id > users.id [delete: cascade]
+Ref: email_verification_codes.user_id > users.id [delete: cascade]
+Ref: generation_attempts.user_id > users.id [delete: cascade]

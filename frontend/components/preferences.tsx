@@ -142,8 +142,10 @@ export function ThemeControl() {
 
 export function LanguageControl({
   onLanguage,
+  menuContainer,
 }: {
   onLanguage: (locale: "en" | "km") => Promise<void>;
+  menuContainer?: HTMLElement | null;
 }) {
   const { locale, setLocale, t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -164,7 +166,8 @@ export function LanguageControl({
 
   return (
     <div>
-      <DropdownMenu>
+      {/* Header menus must not hide page segments that may still be hydrating. */}
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
@@ -179,7 +182,11 @@ export function LanguageControl({
             <ChevronDown aria-hidden="true" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-36">
+        <DropdownMenuContent
+          container={menuContainer}
+          align="end"
+          className="min-w-36"
+        >
           <DropdownMenuRadioGroup
             value={locale}
             onValueChange={(value) => void changeLanguage(value as "en" | "km")}
@@ -206,8 +213,10 @@ export function LanguageControl({
 export function SkipLink() {
   const { t } = useTranslation();
   return (
-    <a href="#main-content" className="skip-link">
-      {t("Skip to content")}
-    </a>
+    <nav aria-label={t("Skip to content")}>
+      <a href="#main-content" className="skip-link">
+        {t("Skip to content")}
+      </a>
+    </nav>
   );
 }
