@@ -9,6 +9,15 @@ async function login(page: Page) {
     .fill("local-test-password");
   await page.getByRole("button", { name: "Login", exact: true }).click();
   await expect(page).toHaveURL(/\/generate$/);
+  // The mock account is shared across tests. Authenticated profile preferences
+  // override localStorage, so initialize the account as well as the browser.
+  const response = await page.request.post("/api/auth/preferences", {
+    headers: { origin: "http://127.0.0.1:3100" },
+    data: { ui_language: "en" },
+  });
+  expect(response.ok()).toBe(true);
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
 }
 
 test.beforeEach(async ({ page }) => {

@@ -52,7 +52,12 @@ export function AuthForm({ register = false }: { register?: boolean }) {
   return (
     <main id="main-content" className="auth">
       <div className="flex items-center justify-center">
-        <Image className="w-30" src={logo} alt="logo"/>
+        <Image
+          className="w-30"
+          src={logo}
+          alt="Generate Description AI"
+          loading="eager"
+        />
       </div>
       <h1 className="text-center">{t(register ? "Create Account" : "Login")}</h1>
       {params.has("error") && (
@@ -114,7 +119,7 @@ export function AuthForm({ register = false }: { register?: boolean }) {
       </form>
       <p className="text-center">{t("or")}</p>
       <a className="button secondary w-full" href="/api/auth/google/start">
-        <Image className="w-6" src={google_icon} alt="google icon"/>
+        <Image className="w-6" src={google_icon} alt="" />
         {t("Continue with Google")}
       </a>
           <p className="text-center text-sm text-muted-foreground">
