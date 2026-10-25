@@ -340,9 +340,12 @@
   .sidebar.collapsed {
     width: 80px;
   }
+  .sidebar.collapsed .brand {
+    width: 100%;
+    justify-content: center;
+  }
   .sidebar.collapsed .nav-label,
-  .sidebar.collapsed .sidebar-note,
-  .sidebar.collapsed .brand-name {
+  .sidebar.collapsed .sidebar-note {
     display: none;
   }
   .sidebar nav,

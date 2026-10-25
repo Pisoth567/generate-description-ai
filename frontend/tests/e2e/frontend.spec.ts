@@ -323,3 +323,109 @@ test("Khmer active forms and category remain accessible in light and dark at all
   await page.getByLabel("ភាសាក្នុងម៉ឺនុយ").click();
   await page.getByRole("menuitemradio", { name: "English" }).click();
 });
+
+for (const theme of ["light", "dark"]) {
+  test(`sidebar brand stays contained and navigable in ${theme}`, async ({
+    page,
+  }) => {
+    await page.addInitScript(
+      (value) => localStorage.setItem("theme", value),
+      theme,
+    );
+    await login(page);
+    await expect(page.locator("html")).toHaveClass(new RegExp(theme));
+    for (const locale of ["en", "km"]) {
+      if (locale === "km") {
+        await page.getByLabel("Navigation language").click();
+        await page.getByRole("menuitemradio", { name: "ខ្មែរ" }).click();
+      }
+      await expect(page.locator("html")).toHaveAttribute("lang", locale);
+      for (const width of [320, 375, 768, 1024, 1199, 1200, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        const sidebar = page.locator(".sidebar");
+        const brand = sidebar.getByRole("link", {
+          name: "Generate Description AI home",
+        });
+        const logo = brand.locator("img");
+        if (width < 1024) {
+          await expect(sidebar).toBeHidden();
+          await page
+            .getByRole("button", {
+              name: locale === "en" ? "Open navigation" : "បើកម៉ឺនុយ",
+              exact: true,
+            })
+            .click();
+          await expect(page.locator(".drawer-nav")).toBeVisible();
+          await page.keyboard.press("Escape");
+          await expect(page.locator(".drawer-nav")).toBeHidden();
+        } else {
+          await expect(logo).toBeVisible();
+          await expect(
+            brand.getByText("Generate", { exact: true }),
+          ).toBeVisible();
+          await page
+            .getByRole("button", {
+              name: locale === "en" ? "Collapse sidebar" : "បង្រួមរបារចំហៀង",
+              exact: true,
+            })
+            .click();
+          await expect(logo).toBeVisible();
+          await expect(
+            brand.getByText("Generate", { exact: true }),
+          ).toBeHidden();
+          await expect(logo).toHaveAttribute("alt", "");
+          const geometry = await logo.evaluate((image) => {
+            const img = image as HTMLImageElement;
+            const rect = img.getBoundingClientRect();
+            const container = img.closest("aside")!.getBoundingClientRect();
+            return {
+              contained:
+                rect.left >= container.left && rect.right <= container.right,
+              centerOffset: Math.abs(
+                rect.left +
+                  rect.width / 2 -
+                  container.left -
+                  container.width / 2,
+              ),
+              ratio: rect.width / rect.height,
+              naturalRatio: img.naturalWidth / img.naturalHeight,
+              overflow:
+                document.documentElement.scrollWidth >
+                document.documentElement.clientWidth,
+            };
+          });
+          expect(geometry.contained).toBe(true);
+          expect(geometry.centerOffset).toBeLessThanOrEqual(1);
+          expect(geometry.ratio).toBeCloseTo(geometry.naturalRatio, 1);
+          expect(geometry.overflow).toBe(false);
+          await sidebar.locator('a[href="/history"]').click();
+          await expect(page).toHaveURL(/\/history$/);
+          await brand.click();
+          await expect(page).toHaveURL(/\/generate$/);
+          await expect(
+            brand.getByText("Generate", { exact: true }),
+          ).toBeHidden();
+          await page
+            .getByRole("button", {
+              name: locale === "en" ? "Expand sidebar" : "ពង្រីករបារចំហៀង",
+              exact: true,
+            })
+            .click();
+          await expect(
+            brand.getByText("Generate", { exact: true }),
+          ).toBeVisible();
+        }
+        expect(
+          await page.evaluate(
+            () =>
+              document.documentElement.scrollWidth >
+              document.documentElement.clientWidth,
+          ),
+        ).toBe(false);
+      }
+    }
+    await page.getByLabel("ភាសាក្នុងម៉ឺនុយ").click();
+    await page.getByRole("menuitemradio", { name: "English" }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  });
+}

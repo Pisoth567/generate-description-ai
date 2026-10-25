@@ -126,7 +126,7 @@ export function SessionShell({
           className={`sidebar ${collapsed ? "collapsed" : ""}`}
           aria-label={t("Sidebar")}
         >
-          <Brand href="/generate" />
+          <Brand href="/generate" collapsed={collapsed} />
           <nav aria-label={t("Main navigation")}>{links()}</nav>
         </aside>
         <div className="workspace">
