@@ -18,6 +18,7 @@ export const khmer = {
   "How it works": "របៀបប្រើប្រាស់",
   About: "អំពីកម្មវិធី",
   "Sign In": "ចូលគណនី",
+  Register: "បង្កើតគណនី",
   "Get Started": "ចាប់ផ្ដើមប្រើប្រាស់",
   "Product Description": "ការពិពណ៌នាផលិតផល",
   Example: "ឧទាហរណ៍",

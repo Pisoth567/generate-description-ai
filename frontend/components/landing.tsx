@@ -208,9 +208,9 @@ export function Landing() {
             ))}
           </ul>
           <div className="landing-nav-actions" onClick={() => setMenuOpen(false)}>
-            <Link href="/login">{t("Sign In")}</Link>
-            <Link className="button" href="/register">
-              {t("Login")}
+            <Link href="/register">{t("Register")}</Link>
+            <Link className="button" href="/login">
+              {t("Sign In")}
             </Link>
           </div>
         </nav>

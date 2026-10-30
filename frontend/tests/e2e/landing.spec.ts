@@ -67,6 +67,22 @@ for (const locale of ["en", "km"]) {
             ),
           ).toBe(true);
         }
+        const authActions = page.locator(".landing-nav-actions");
+        const registerLabel = locale === "en" ? "Register" : "បង្កើតគណនី";
+        const loginLabel = locale === "en" ? "Sign In" : "ចូលគណនី";
+        await expect(authActions.getByRole("link")).toHaveText([
+          registerLabel,
+          loginLabel,
+        ]);
+        for (const [name, href] of [
+          [registerLabel, "/register"],
+          [loginLabel, "/login"],
+        ]) {
+          const link = authActions.getByRole("link", { name, exact: true });
+          await expect(link).toHaveCount(1);
+          await expect(link).toBeVisible();
+          await expect(link).toHaveAttribute("href", href);
+        }
         expect((await new AxeBuilder({ page }).include(".landing-nav").analyze()).violations).toEqual(
           [],
         );
