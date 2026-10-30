@@ -19,25 +19,25 @@ const reviews = [
   {
     name: "Net Pisoth",
     username: "pisoth887@gmail.com",
-    body: "A Full-Stack Developer and Computer Science Student at Western University Cambodia | Building innovative web applications with React, Next.js, Python and Java | Always learning, building, and growing.",
+    body: "A Computer Science student at Western University Cambodia. I am interested in full-stack development. Building innovative web applications with React, Next.js, Python, and Java. Always learning, building, and growing.",
     img: pisoth,
   },
   {
     name: "Pho Seyha",
     username: "phoseyha007@gmail.com",
-    body: "A Senior Linux Administrator Server and Computer Science Student at Western University Cambodia",
+    body: "A Computer Science student",
     img: seyha,
   },
   {
     name: "Chheang Huy",
     username: "chheanghuy263@gmail.com",
-    body: "I'm at a loss for words. This is amazing. I love it.",
+    body: "A Computer Science student at Western University Cambodia. I am interested in programming and cross-platform app development using Flutter and .NET MAUI. I enjoy learning new technologies and improving my coding skills. My goal is to become a professional software developer in the future.",
     img: huy,
   },
   {
     name: "Mov Sodanich",
     username: "sodanich79@gmail.com",
-    body: "I'm at a loss for words. This is amazing. I love it.",
+    body: "Computer Science student specializing in Front-End Development, passionate about programming, modern web technologies, and building responsive, interactive, and user-friendly web applications. Always learning, creating, and improving my skills to turn ideas into meaningful digital experiences.",
     img: danich,
   },
 ];
